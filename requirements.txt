@@ -13,6 +13,9 @@ python-multipart>=0.0.20
 sqlmodel>=0.0.24
 alembic>=1.14.0
 
+# Pydantic / Email Validation
+email-validator>=2.0.0
+
 # Seguridad
 passlib[bcrypt]>=1.7.4
 python-jose[cryptography]>=3.3.0
