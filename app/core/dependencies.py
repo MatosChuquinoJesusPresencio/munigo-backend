@@ -1,9 +1,9 @@
-from typing import Optional, Dict, Any, cast
+from typing import Optional, Dict, Any
 
 from fastapi import Depends, HTTPException, status, Request, Cookie
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
-from app.core.config import settings, UserRole
+from app.core.config import settings, RolUsuario
 from app.core.security import decode_access_token
 
 
@@ -60,7 +60,7 @@ async def get_current_user_or_401(
     return current_user
 
 
-def require_role(*required_roles: UserRole):
+def require_role(*required_roles: RolUsuario):
     async def role_checker(
         current_user: Dict[str, Any] = Depends(get_current_user_or_401)
     ) -> Dict[str, Any]:
@@ -75,7 +75,7 @@ def require_role(*required_roles: UserRole):
     return role_checker
 
 
-get_current_ciudadano = require_role(UserRole.CIUDADANO)
-get_current_funcionario = require_role(UserRole.FUNCIONARIO)
-get_current_inspector = require_role(UserRole.INSPECTOR)
-get_current_gerente = require_role(UserRole.GERENTE)
+get_current_ciudadano = require_role(RolUsuario.CIUDADANO)
+get_current_funcionario = require_role(RolUsuario.FUNCIONARIO)
+get_current_inspector = require_role(RolUsuario.INSPECTOR)
+get_current_gerente = require_role(RolUsuario.GERENTE)

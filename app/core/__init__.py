@@ -1,8 +1,13 @@
 from app.core.config import (
     settings,
-    UserRole,
-    RiskLevel,
-    TramiteStatus,
+    RolUsuario,
+    NivelRiesgo,
+    EstadoTramite,
+    TipoTramite,
+    EstadoValidacion,
+    EstadoCita,
+    ResultadoInspeccion,
+    TipoDocumento,
 )
 from app.core.security import (
     verify_password,
@@ -23,9 +28,14 @@ from app.core.dependencies import (
 
 __all__ = [
     "settings",
-    "UserRole",
-    "RiskLevel",
-    "TramiteStatus",
+    "RolUsuario",
+    "NivelRiesgo",
+    "EstadoTramite",
+    "TipoTramite",
+    "EstadoValidacion",
+    "EstadoCita",
+    "ResultadoInspeccion",
+    "TipoDocumento",
     "verify_password",
     "get_password_hash",
     "create_access_token",

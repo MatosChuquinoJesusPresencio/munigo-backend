@@ -1,30 +1,57 @@
 from enum import Enum
 
 
-class UserRole(str, Enum):
+class RolUsuario(str, Enum):
     CIUDADANO = "ciudadano"
     FUNCIONARIO = "funcionario"
     INSPECTOR = "inspector"
     GERENTE = "gerente"
 
 
-class RiskLevel(str, Enum):
+class NivelRiesgo(str, Enum):
     BAJO = "bajo"
     MEDIO = "medio"
     ALTO = "alto"
 
 
-class TramiteStatus(str, Enum):
-    PENDIENTE = "pendiente"
-    EN_REVISION = "en_revision"
+class EstadoTramite(str, Enum):
+    BORRADOR = "borrador"
+    PENDIENTE_REVISION = "pendiente_revision"
+    DOCUMENTOS_APROBADOS = "documentos_aprobados"
+    PENDIENTE_INSPECCION = "pendiente_inspeccion"
+    APROBADO = "aprobado"
     OBSERVADO = "observado"
-    APROBADO_DOCUMENTOS = "aprobado_documentos"
-    CITA_ASIGNADA = "cita_asignada"
-    EN_INSPECCION = "en_inspeccion"
-    INSPECCION_APROBADA = "inspeccion_aprobada"
-    INSPECCION_RECHAZADA = "inspeccion_rechazada"
-    FINALIZADO = "finalizado"
     RECHAZADO = "rechazado"
+
+
+class TipoTramite(str, Enum):
+    LICENCIA_FUNCIONAMIENTO = "licencia_funcionamiento"
+    ITSE = "itse"
+
+
+class EstadoValidacion(str, Enum):
+    PENDIENTE = "pendiente"
+    APROBADO = "aprobado"
+    OBSERVADO = "observado"
+
+
+class EstadoCita(str, Enum):
+    PROGRAMADA = "programada"
+    COMPLETADA = "completada"
+    CANCELADA = "cancelada"
+
+
+class ResultadoInspeccion(str, Enum):
+    PENDIENTE = "pendiente"
+    APROBADO = "aprobado"
+    NO_APROBADO = "no_aprobado"
+
+
+class TipoDocumento(str, Enum):
+    DNI = "DNI"
+    RUC = "RUC"
+    CARNET_EXTRANJERIA = "carnet_extranjeria"
+    PASAPORTE = "pasaporte"
 
 
 class Settings:

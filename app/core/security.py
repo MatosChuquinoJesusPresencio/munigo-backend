@@ -4,7 +4,7 @@ from typing import Optional, Dict, Any
 from jose import jwt, JWTError
 from passlib.context import CryptContext
 
-from app.core.config import settings, UserRole
+from app.core.config import settings, RolUsuario
 
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -46,7 +46,7 @@ def decode_access_token(token: str) -> Optional[Dict[str, Any]]:
 def create_token_for_user(
     user_id: int,
     email: str,
-    role: UserRole,
+    role: RolUsuario,
     expires_delta: Optional[timedelta] = None
 ) -> str:
     data = {
