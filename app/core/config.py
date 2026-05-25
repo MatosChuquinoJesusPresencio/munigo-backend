@@ -1,7 +1,4 @@
 from enum import Enum
-from pydantic_settings import BaseSettings
-from typing import Optional
-from functools import lru_cache
 
 
 class UserRole(str, Enum):
@@ -30,12 +27,12 @@ class TramiteStatus(str, Enum):
     RECHAZADO = "rechazado"
 
 
-class Settings(BaseSettings):
+class Settings:
     APP_NAME: str = "MuniGo"
     APP_VERSION: str = "0.1.0"
     DEBUG: bool = True
     
-    SECRET_KEY: str = "lenguajes-de-programacion-24697"
+    SECRET_KEY: str = "lenguajes-de-programacion-24697-muni-go"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24
     
@@ -43,15 +40,6 @@ class Settings(BaseSettings):
     
     UPLOAD_DIR: str = "app/static/uploads"
     MAX_UPLOAD_SIZE: int = 10 * 1024 * 1024
-    
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
 
 
-@lru_cache
-def get_settings() -> Settings:
-    return Settings()
-
-
-settings = get_settings()
+settings = Settings()

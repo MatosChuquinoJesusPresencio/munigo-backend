@@ -1,6 +1,4 @@
 from app.core.config import (
-    Settings,
-    get_settings,
     settings,
     UserRole,
     RiskLevel,
@@ -24,8 +22,6 @@ from app.core.dependencies import (
 )
 
 __all__ = [
-    "Settings",
-    "get_settings",
     "settings",
     "UserRole",
     "RiskLevel",
