@@ -111,6 +111,16 @@ ENV/
 env.bak/
 venv.bak/
 
+# Database - SQLite files (keep .gitkeep if needed)
+app/database/data/*
+!app/database/data/.gitkeep
+*.db
+*.db-journal
+
+# Uploads de usuarios
+app/static/uploads/*
+!app/static/uploads/.gitkeep
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
