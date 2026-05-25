@@ -1,15 +1,13 @@
 from app.database.connection import (
     engine,
-    SessionLocal,
-    Base,
-    get_db,
+    get_session,
+    create_db_and_tables,
     init_db,
 )
 
 __all__ = [
     "engine",
-    "SessionLocal",
-    "Base",
-    "get_db",
+    "get_session",
+    "create_db_and_tables",
     "init_db",
 ]

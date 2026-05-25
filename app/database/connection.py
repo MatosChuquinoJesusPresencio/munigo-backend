@@ -1,8 +1,6 @@
 from typing import Generator, Optional
 
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, Session
+from sqlmodel import Session, SQLModel, create_engine, text
 
 from app.core.config import settings
 
@@ -13,24 +11,15 @@ engine = create_engine(
     echo=settings.DEBUG
 )
 
-SessionLocal = sessionmaker(
-    autocommit=False,
-    autoflush=False,
-    bind=engine
-)
 
-Base = declarative_base()
+def get_session() -> Generator[Session, None, None]:
+    with Session(engine) as session:
+        yield session
 
 
-def get_db() -> Generator[Session, None, None]:
-    db: Optional[Session] = None
-    try:
-        db = SessionLocal()
-        yield db
-    finally:
-        if db:
-            db.close()
+def create_db_and_tables() -> None:
+    SQLModel.metadata.create_all(engine)
 
 
 def init_db() -> None:
-    Base.metadata.create_all(bind=engine)
+    create_db_and_tables()
