@@ -49,3 +49,15 @@ class TokenData(BaseModel):
     user_id: int | None = None
     email: str | None = None
     role: RolUsuario | None = None
+
+
+from app.core.config import TipoDocumento
+
+class RegistroRequest(BaseModel):
+    correo_electronico: EmailStr
+    contrasena: str
+    tipo_documento: TipoDocumento
+    numero_documento: str
+    nombres_razon_social: str
+    telefono: str
+    direccion: str = ""

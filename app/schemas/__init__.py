@@ -7,6 +7,7 @@ from app.schemas.usuario import (
     UsuarioRolResponse,
     Token,
     TokenData,
+    RegistroRequest,
 )
 from app.schemas.ciudadano import (
     CiudadanoBase,
@@ -88,6 +89,7 @@ __all__ = [
     "UsuarioRolResponse",
     "Token",
     "TokenData",
+    "RegistroRequest",
     "CiudadanoBase",
     "CiudadanoCreate",
     "CiudadanoUpdate",
