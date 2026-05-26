@@ -51,6 +51,30 @@ async def home(request: Request):
     )
 
 
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request):
+    return templates.TemplateResponse(
+        request=request,
+        name="auth/login.html"
+    )
+
+
+@app.get("/register", response_class=HTMLResponse)
+async def register_page(request: Request):
+    return templates.TemplateResponse(
+        request=request,
+        name="auth/register.html"
+    )
+
+
+@app.get("/dashboard", response_class=HTMLResponse)
+async def dashboard_page(request: Request):
+    return templates.TemplateResponse(
+        request=request,
+        name="home.html"
+    )
+
+
 @app.get("/api/health")
 async def health_check():
     return {"status": "ok", "message": "MuniGo está funcionando"}
