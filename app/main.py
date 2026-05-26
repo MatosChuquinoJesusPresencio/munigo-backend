@@ -2,6 +2,18 @@ from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
+from fastapi.middleware.cors import CORSMiddleware
+
+from app.database.connection import create_db_and_tables
+from app.routers import (
+    auth_router,
+    tramites_router,
+    evaluacion_router,
+    citas_router,
+    inspecciones_router,
+    notificaciones_router,
+    dashboard_router,
+)
 
 
 app = FastAPI(
@@ -11,10 +23,24 @@ app = FastAPI(
 )
 
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 
 templates = Jinja2Templates(directory="app/templates")
+
+
+@app.on_event("startup")
+def on_startup():
+    create_db_and_tables()
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -28,6 +54,15 @@ async def home(request: Request):
 @app.get("/api/health")
 async def health_check():
     return {"status": "ok", "message": "MuniGo está funcionando"}
+
+
+app.include_router(auth_router)
+app.include_router(tramites_router)
+app.include_router(evaluacion_router)
+app.include_router(citas_router)
+app.include_router(inspecciones_router)
+app.include_router(notificaciones_router)
+app.include_router(dashboard_router)
 
 
 if __name__ == "__main__":
