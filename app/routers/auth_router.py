@@ -19,10 +19,10 @@ from app.schemas import (
 from app.models import Usuario, Ciudadano
 from app.services import auth_service
 
-router = APIRouter(prefix="/api/auth", tags=["Autenticación"])
+auth_router = APIRouter(prefix="/api/auth", tags=["Autenticación"])
 
 
-@router.post(
+@auth_router.post(
     "/registro",
     response_model=UsuarioResponse,
     status_code=status.HTTP_201_CREATED
@@ -58,7 +58,7 @@ def registro(
         )
 
 
-@router.post("/login", response_model=Token)
+@auth_router.post("/login", response_model=Token)
 def login(
     body: UsuarioLogin,
     session: Session = Depends(get_session)
@@ -79,14 +79,14 @@ def login(
         )
 
 
-@router.get("/me", response_model=UsuarioResponse)
+@auth_router.get("/me", response_model=UsuarioResponse)
 def me(
     usuario: Usuario = Depends(get_current_user_obj)
 ):
     return usuario
 
 
-@router.get("/me/ciudadano", response_model=CiudadanoResponse)
+@auth_router.get("/me/ciudadano", response_model=CiudadanoResponse)
 def me_ciudadano(
     usuario: Usuario = Depends(get_current_user_obj),
     session: Session = Depends(get_session)

@@ -29,10 +29,10 @@ from app.schemas import (
 from app.models import Ciudadano, Empleado, Expediente, DocumentoAdjunto
 from app.services import tramite_service, notificacion_service
 
-router = APIRouter(prefix="/api/tramites", tags=["Gestión de Trámites"])
+tramites_router = APIRouter(prefix="/api/tramites", tags=["Gestión de Trámites"])
 
 
-@router.get("/mis-tramites", response_model=List[ExpedienteResponse])
+@tramites_router.get("/mis-tramites", response_model=List[ExpedienteResponse])
 def mis_tramites(
     ciudadano: Ciudadano = Depends(get_current_ciudadano_obj),
     session: Session = Depends(get_session)
@@ -41,7 +41,7 @@ def mis_tramites(
     return expedientes
 
 
-@router.post(
+@tramites_router.post(
     "",
     response_model=ExpedienteResponse,
     status_code=status.HTTP_201_CREATED
@@ -65,7 +65,7 @@ def crear_expediente(
         )
 
 
-@router.get("/{id}", response_model=ExpedienteResponse)
+@tramites_router.get("/{id}", response_model=ExpedienteResponse)
 def ver_expediente(
     id: int,
     ciudadano: Ciudadano = Depends(get_current_ciudadano_obj),
@@ -87,7 +87,7 @@ def ver_expediente(
     return expediente
 
 
-@router.put("/{id}", response_model=ExpedienteResponse)
+@tramites_router.put("/{id}", response_model=ExpedienteResponse)
 def actualizar_expediente(
     id: int,
     body: ExpedienteUpdate,
@@ -121,7 +121,7 @@ def actualizar_expediente(
         )
 
 
-@router.post("/{id}/enviar", response_model=ExpedienteResponse)
+@tramites_router.post("/{id}/enviar", response_model=ExpedienteResponse)
 def enviar_expediente(
     id: int,
     ciudadano: Ciudadano = Depends(get_current_ciudadano_obj),
@@ -158,7 +158,7 @@ def enviar_expediente(
         )
 
 
-@router.get("/{id}/documentos", response_model=List[DocumentoAdjuntoResponse])
+@tramites_router.get("/{id}/documentos", response_model=List[DocumentoAdjuntoResponse])
 def listar_documentos(
     id: int,
     ciudadano: Ciudadano = Depends(get_current_ciudadano_obj),
@@ -181,7 +181,7 @@ def listar_documentos(
     return documentos
 
 
-@router.post(
+@tramites_router.post(
     "/{id}/documentos",
     response_model=DocumentoSubidoResponse,
     status_code=status.HTTP_201_CREATED
@@ -243,7 +243,7 @@ async def subir_documento(
         )
 
 
-@router.post("/clasificar-riesgo", response_model=ExpedienteRiesgoResponse)
+@tramites_router.post("/clasificar-riesgo", response_model=ExpedienteRiesgoResponse)
 def clasificar_riesgo_simulado(
     body: ExpedienteRiesgoRequest
 ):
@@ -267,7 +267,7 @@ def clasificar_riesgo_simulado(
     )
 
 
-@router.get("/pendientes/revision", response_model=List[ExpedienteResponse])
+@tramites_router.get("/pendientes/revision", response_model=List[ExpedienteResponse])
 def listar_pendientes_revision(
     empleado: Empleado = Depends(get_current_funcionario_obj),
     session: Session = Depends(get_session)

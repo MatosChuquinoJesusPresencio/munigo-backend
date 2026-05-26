@@ -27,7 +27,7 @@ from app.core.dependencies import (
 from app.models import Empleado
 from app.services import dashboard_service
 
-router = APIRouter(prefix="/api/dashboard", tags=["Dashboard (Fase 2)"])
+dashboard_router = APIRouter(prefix="/api/dashboard", tags=["Dashboard (Fase 2)"])
 
 
 MENSAJE_FASE_2 = {
@@ -37,7 +37,7 @@ MENSAJE_FASE_2 = {
 }
 
 
-@router.get("/estadisticas")
+@dashboard_router.get("/estadisticas")
 def estadisticas_generales(
     fecha_inicio: Optional[date] = Query(None, description="Fecha de inicio"),
     fecha_fin: Optional[date] = Query(None, description="Fecha de fin"),
@@ -58,7 +58,7 @@ def estadisticas_generales(
     }
 
 
-@router.get("/tiempo-promedio")
+@dashboard_router.get("/tiempo-promedio")
 def tiempo_promedio_tramite(
     tipo_tramite: Optional[str] = Query(None, description="Filtrar por tipo de trámite"),
     _gerente: Empleado = Depends(get_current_gerente_obj),
@@ -75,7 +75,7 @@ def tiempo_promedio_tramite(
     }
 
 
-@router.get("/distribucion-riesgo")
+@dashboard_router.get("/distribucion-riesgo")
 def distribucion_por_riesgo(
     _gerente: Empleado = Depends(get_current_gerente_obj),
     session: Session = Depends(get_session)
@@ -91,7 +91,7 @@ def distribucion_por_riesgo(
     }
 
 
-@router.get("/rendimiento-funcionarios")
+@dashboard_router.get("/rendimiento-funcionarios")
 def rendimiento_funcionarios(
     fecha_inicio: Optional[date] = Query(None),
     fecha_fin: Optional[date] = Query(None),
@@ -110,7 +110,7 @@ def rendimiento_funcionarios(
     }
 
 
-@router.get("/expedientes-lentos")
+@dashboard_router.get("/expedientes-lentos")
 def expedientes_lentos(
     limite: int = Query(10, ge=1, le=100, description="Cantidad de expedientes a mostrar"),
     _gerente: Empleado = Depends(get_current_gerente_obj),
@@ -130,7 +130,7 @@ def expedientes_lentos(
     }
 
 
-@router.get("/alertas-vencidos")
+@dashboard_router.get("/alertas-vencidos")
 def alertas_vencidos(
     dias_vencimiento: int = Query(15, ge=1, description="Días límite según normativa"),
     _gerente: Empleado = Depends(get_current_gerente_obj),
@@ -149,7 +149,7 @@ def alertas_vencidos(
     }
 
 
-@router.get("/resumen")
+@dashboard_router.get("/resumen")
 def resumen_rapido(
     _empleado: Empleado = Depends(get_current_funcionario_obj),
     session: Session = Depends(get_session)

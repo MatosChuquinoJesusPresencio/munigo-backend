@@ -15,10 +15,10 @@ from app.schemas import (
 from app.models import Usuario, Ciudadano
 from app.services import notificacion_service
 
-router = APIRouter(prefix="/api/notificaciones", tags=["Notificaciones"])
+notificaciones_router = APIRouter(prefix="/api/notificaciones", tags=["Notificaciones"])
 
 
-@router.get("", response_model=NotificacionListaResponse)
+@notificaciones_router.get("", response_model=NotificacionListaResponse)
 def listar_notificaciones(
     solo_no_leidas: bool = False,
     ciudadano: Ciudadano = Depends(get_current_ciudadano_obj),
@@ -37,7 +37,7 @@ def listar_notificaciones(
     )
 
 
-@router.get("/no-leidas", response_model=NotificacionListaResponse)
+@notificaciones_router.get("/no-leidas", response_model=NotificacionListaResponse)
 def listar_no_leidas(
     ciudadano: Ciudadano = Depends(get_current_ciudadano_obj),
     session: Session = Depends(get_session)
@@ -55,7 +55,7 @@ def listar_no_leidas(
     )
 
 
-@router.put("/{id}/leida", status_code=status.HTTP_200_OK)
+@notificaciones_router.put("/{id}/leida", status_code=status.HTTP_200_OK)
 def marcar_como_leida(
     id: int,
     ciudadano: Ciudadano = Depends(get_current_ciudadano_obj),
@@ -75,7 +75,7 @@ def marcar_como_leida(
         )
 
 
-@router.post("/marcar-todas", status_code=status.HTTP_200_OK)
+@notificaciones_router.post("/marcar-todas", status_code=status.HTTP_200_OK)
 def marcar_todas_como_leidas(
     ciudadano: Ciudadano = Depends(get_current_ciudadano_obj),
     session: Session = Depends(get_session)

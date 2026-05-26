@@ -16,10 +16,10 @@ from app.schemas import (
 from app.models import Ciudadano, Empleado, Cita, Expediente
 from app.services import cita_service, tramite_service, notificacion_service
 
-router = APIRouter(prefix="/api/citas", tags=["Citas"])
+citas_router = APIRouter(prefix="/api/citas", tags=["Citas"])
 
 
-@router.get("/disponibilidad", response_model=CitaDisponibilidadResponse)
+@citas_router.get("/disponibilidad", response_model=CitaDisponibilidadResponse)
 def obtener_horarios_disponibles(
     fecha: date = Query(..., description="Fecha para verificar disponibilidad"),
     _ciudadano: Ciudadano = Depends(get_current_ciudadano_obj),
@@ -33,7 +33,7 @@ def obtener_horarios_disponibles(
     )
 
 
-@router.post(
+@citas_router.post(
     "/programar",
     response_model=CitaResponse,
     status_code=status.HTTP_201_CREATED
@@ -79,7 +79,7 @@ def programar_cita(
         )
 
 
-@router.get("/mis-citas", response_model=List[CitaResponse])
+@citas_router.get("/mis-citas", response_model=List[CitaResponse])
 def mis_citas(
     ciudadano: Ciudadano = Depends(get_current_ciudadano_obj),
     session: Session = Depends(get_session)
@@ -96,7 +96,7 @@ def mis_citas(
     return list(citas)
 
 
-@router.get("/{id}", response_model=CitaResponse)
+@citas_router.get("/{id}", response_model=CitaResponse)
 def obtener_cita(
     id: int,
     ciudadano: Ciudadano = Depends(get_current_ciudadano_obj),
@@ -119,7 +119,7 @@ def obtener_cita(
     return cita
 
 
-@router.delete("/{id}", status_code=status.HTTP_200_OK)
+@citas_router.delete("/{id}", status_code=status.HTTP_200_OK)
 def cancelar_cita(
     id: int,
     ciudadano: Ciudadano = Depends(get_current_ciudadano_obj),
@@ -149,7 +149,7 @@ def cancelar_cita(
         )
 
 
-@router.get("/funcionario/mis-citas", response_model=List[CitaResponse])
+@citas_router.get("/funcionario/mis-citas", response_model=List[CitaResponse])
 def citas_funcionario(
     empleado: Empleado = Depends(get_current_funcionario_obj),
     session: Session = Depends(get_session)

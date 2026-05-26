@@ -17,10 +17,10 @@ from app.schemas import (
 from app.models import Empleado, Expediente, DocumentoAdjunto
 from app.services import evaluacion_service, notificacion_service, tramite_service
 
-router = APIRouter(prefix="/api/evaluacion", tags=["Evaluación"])
+evaluacion_router = APIRouter(prefix="/api/evaluacion", tags=["Evaluación"])
 
 
-@router.get("/pendientes", response_model=List[ExpedienteResponse])
+@evaluacion_router.get("/pendientes", response_model=List[ExpedienteResponse])
 def listar_pendientes(
     empleado: Empleado = Depends(get_current_funcionario_obj),
     session: Session = Depends(get_session)
@@ -29,7 +29,7 @@ def listar_pendientes(
     return expedientes
 
 
-@router.get("/expedientes/{id}", response_model=ExpedienteResponse)
+@evaluacion_router.get("/expedientes/{id}", response_model=ExpedienteResponse)
 def detalle_expediente(
     id: int,
     empleado: Empleado = Depends(get_current_funcionario_obj),
@@ -44,7 +44,7 @@ def detalle_expediente(
     return expediente
 
 
-@router.get("/expedientes/{id}/documentos", response_model=List[DocumentoAdjuntoResponse])
+@evaluacion_router.get("/expedientes/{id}/documentos", response_model=List[DocumentoAdjuntoResponse])
 def listar_documentos_expediente(
     id: int,
     empleado: Empleado = Depends(get_current_funcionario_obj),
@@ -54,7 +54,7 @@ def listar_documentos_expediente(
     return documentos
 
 
-@router.post("/documentos/validar", response_model=DocumentoAdjuntoResponse)
+@evaluacion_router.post("/documentos/validar", response_model=DocumentoAdjuntoResponse)
 def validar_documento(
     body: DocumentoValidacionRequest,
     empleado: Empleado = Depends(get_current_funcionario_obj),
@@ -87,7 +87,7 @@ def validar_documento(
         )
 
 
-@router.post("/expedientes/{id}/finalizar", response_model=ExpedienteResponse)
+@evaluacion_router.post("/expedientes/{id}/finalizar", response_model=ExpedienteResponse)
 def finalizar_revision(
     id: int,
     empleado: Empleado = Depends(get_current_funcionario_obj),
@@ -124,7 +124,7 @@ def finalizar_revision(
         )
 
 
-@router.put("/expedientes/{id}/riesgo", response_model=ExpedienteResponse)
+@evaluacion_router.put("/expedientes/{id}/riesgo", response_model=ExpedienteResponse)
 def cambiar_nivel_riesgo(
     id: int,
     nivel_riesgo: NivelRiesgo,

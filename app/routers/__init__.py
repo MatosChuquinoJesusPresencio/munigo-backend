@@ -1,10 +1,10 @@
-from app.routers.auth import router as auth_router
-from app.routers.tramites import router as tramites_router
-from app.routers.evaluacion import router as evaluacion_router
-from app.routers.citas import router as citas_router
-from app.routers.inspecciones import router as inspecciones_router
-from app.routers.notificaciones import router as notificaciones_router
-from app.routers.dashboard import router as dashboard_router
+from app.routers.auth_router import auth_router
+from app.routers.tramites_router import tramites_router
+from app.routers.evaluacion_router import evaluacion_router
+from app.routers.citas_router import citas_router
+from app.routers.inspecciones_router import inspecciones_router
+from app.routers.notificaciones_router import notificaciones_router
+from app.routers.dashboard_router import dashboard_router
 
 __all__ = [
     "auth_router",

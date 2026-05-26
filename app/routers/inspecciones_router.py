@@ -29,10 +29,10 @@ from app.schemas import (
 from app.models import Empleado, Ciudadano, Inspeccion, Expediente
 from app.services import inspeccion_service, tramite_service, notificacion_service
 
-router = APIRouter(prefix="/api/inspecciones", tags=["Inspección y Control"])
+inspecciones_router = APIRouter(prefix="/api/inspecciones", tags=["Inspección y Control"])
 
 
-@router.post(
+@inspecciones_router.post(
     "/asignar",
     response_model=InspeccionResponse,
     status_code=status.HTTP_201_CREATED
@@ -59,7 +59,7 @@ def asignar_inspeccion(
         )
 
 
-@router.get("/hoja-ruta", response_model=HojaRutaResponse)
+@inspecciones_router.get("/hoja-ruta", response_model=HojaRutaResponse)
 def obtener_hoja_ruta(
     fecha: Optional[date] = None,
     inspector: Empleado = Depends(get_current_inspector_obj),
@@ -94,7 +94,7 @@ def obtener_hoja_ruta(
     )
 
 
-@router.get("/mis-inspecciones", response_model=List[InspeccionResponse])
+@inspecciones_router.get("/mis-inspecciones", response_model=List[InspeccionResponse])
 def mis_inspecciones(
     inspector: Empleado = Depends(get_current_inspector_obj),
     session: Session = Depends(get_session)
@@ -103,7 +103,7 @@ def mis_inspecciones(
     return inspecciones
 
 
-@router.get("/{id}", response_model=InspeccionResponse)
+@inspecciones_router.get("/{id}", response_model=InspeccionResponse)
 def obtener_inspeccion(
     id: int,
     inspector: Empleado = Depends(get_current_inspector_obj),
@@ -125,7 +125,7 @@ def obtener_inspeccion(
     return inspeccion
 
 
-@router.post("/{id}/resultado", response_model=InspeccionResponse)
+@inspecciones_router.post("/{id}/resultado", response_model=InspeccionResponse)
 async def registrar_resultado(
     id: int,
     resultado: str = Form(...),
@@ -210,7 +210,7 @@ async def registrar_resultado(
         )
 
 
-@router.get("/expediente/{id_expediente}", response_model=List[InspeccionResponse])
+@inspecciones_router.get("/expediente/{id_expediente}", response_model=List[InspeccionResponse])
 def inspecciones_expediente(
     id_expediente: int,
     ciudadano: Ciudadano = Depends(get_current_ciudadano_obj),
