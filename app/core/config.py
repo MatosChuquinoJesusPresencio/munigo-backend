@@ -58,6 +58,7 @@ class Settings:
     APP_NAME: str = "MuniGo"
     APP_VERSION: str = "0.1.0"
     DEBUG: bool = True
+    SQL_ECHO: bool = False
     
     SECRET_KEY: str = "lenguajes-de-programacion-24697-muni-go"
     ALGORITHM: str = "HS256"
