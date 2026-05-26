@@ -4,7 +4,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.database.connection import create_db_and_tables
+from app.database.scripts import setup_database
 from app.routers import (
     auth_router,
     tramites_router,
@@ -40,7 +40,7 @@ templates = Jinja2Templates(directory="app/templates")
 
 @app.on_event("startup")
 def on_startup():
-    create_db_and_tables()
+    setup_database()
 
 
 @app.get("/", response_class=HTMLResponse)
