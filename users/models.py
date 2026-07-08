@@ -3,15 +3,26 @@ from django.contrib.auth.models import AbstractUser
 
 
 class Role(models.TextChoices):
-    CIUDADANO = "CIUDADANO", "Ciudadano"
+    CITIZEN = "CIUDADANO", "Ciudadano"
     INSPECTOR = "INSPECTOR", "Inspector"
-    FUNCIONARIO = "FUNCIONARIO", "Funcionario"
-    ADMINISTRADOR = "ADMINISTRADOR", "Administrador"
+    OFFICIAL = "FUNCIONARIO", "Funcionario"
+    MANAGER = "GERENTE", "Gerente"
 
 
 class User(AbstractUser):
     role = models.CharField(
         max_length=20,
         choices=Role.choices,
-        default=Role.CIUDADANO,
+        default=Role.CITIZEN,
     )
+    email = models.EmailField(unique=True)
+
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = ['username']
+
+    class Meta:
+        verbose_name = "User"
+        verbose_name_plural = "Users"
+
+    def __str__(self):
+        return self.email
