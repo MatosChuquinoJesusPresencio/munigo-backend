@@ -8,3 +8,6 @@ def login_page(request):
 
 def register_page(request):
     return render(request, 'auth/register.html')
+
+def dashboard_page(request):
+    return render(request, 'dashboard/index.html')
