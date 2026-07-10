@@ -47,9 +47,6 @@ class Citizen(models.Model):
         default=DocumentType.DNI,
     )
     document_number = models.CharField(max_length=22, unique=True)
-    address = models.TextField()
-    phone_number = models.CharField(max_length=20)
-    business_name = models.CharField(max_length=100, blank=True, null=True)
 
     class Meta:
         verbose_name = "Ciudadano"
@@ -76,3 +73,15 @@ class Employee(models.Model):
         return (
             f"{self.citizen.user.get_full_name()} - {self.get_position_display()}"
         )
+
+
+class BlacklistedToken(models.Model):
+    token = models.CharField(max_length=500, unique=True)
+    blacklisted_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Token bloqueado"
+        verbose_name_plural = "Tokens bloqueados"
+
+    def __str__(self):
+        return f"Blacklisted {self.token[:20]}..."
