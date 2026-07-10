@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from procedures.models import CaseFile, Requirement, AttachedDocument, ProcedureRequirement
+from procedures.models import CaseFile, Requirement, ProcedureRequirement, AttachedDocument, Appointment
 
 
 @admin.register(CaseFile)
@@ -26,3 +26,9 @@ class ProcedureRequirementAdmin(admin.ModelAdmin):
 class AttachedDocumentAdmin(admin.ModelAdmin):
     list_display = ["name", "procedure_requirement", "validation_status", "uploaded_at"]
     list_filter = ["validation_status"]
+
+
+@admin.register(Appointment)
+class AppointmentAdmin(admin.ModelAdmin):
+    list_display = ["case_file", "inspector", "scheduled_date", "start_time", "end_time", "status"]
+    list_filter = ["status"]

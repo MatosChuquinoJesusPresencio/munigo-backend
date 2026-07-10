@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from procedures.models import CaseFile, Requirement, AllowedFormat
+from procedures.models import CaseFile, Requirement, AllowedFormat, Appointment
 
 
 class RequirementSerializer(serializers.ModelSerializer):
@@ -37,4 +37,47 @@ class CaseFileSerializer(serializers.ModelSerializer):
         establishment = validated_data["establishment"]
         validated_data["risk_level"] = establishment.get_risk_level()
         validated_data["tracking_code"] = f"EXP-{uuid.uuid4().hex[:8].upper()}"
+        return super().create(validated_data)
+
+
+class AppointmentSerializer(serializers.ModelSerializer):
+    created_by = serializers.HiddenField(default=None)
+
+    class Meta:
+        model = Appointment
+        fields = [
+            "id", "case_file", "created_by", "inspector",
+            "scheduled_date", "start_time", "end_time", "status",
+        ]
+        read_only_fields = ["status"]
+
+    def validate_created_by(self, value):
+        user = self.context["request"].user
+        try:
+            employee = user.citizen.employee
+        except AttributeError:
+            raise serializers.ValidationError("El usuario no es un empleado.")
+
+        if employee.position not in ("OFFICIAL", "MANAGER"):
+            raise serializers.ValidationError(
+                "Solo un funcionario o gerente puede crear citas."
+            )
+        return employee
+
+    def validate_inspector(self, value):
+        if value is not None and value.position != "INSPECTOR":
+            raise serializers.ValidationError(
+                "El inspector debe tener el cargo de Inspector."
+            )
+        return value
+
+    def validate(self, data):
+        if data["start_time"] >= data["end_time"]:
+            raise serializers.ValidationError(
+                "La hora de inicio debe ser anterior a la hora de fin."
+            )
+        return data
+
+    def create(self, validated_data):
+        validated_data["created_by"] = self.validate_created_by(None)
         return super().create(validated_data)

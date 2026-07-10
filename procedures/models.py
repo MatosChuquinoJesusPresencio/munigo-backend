@@ -35,6 +35,12 @@ class ValidationStatus(models.TextChoices):
     OBSERVED = "OBSERVADO", "Observado"
 
 
+class AppointmentStatus(models.TextChoices):
+    SCHEDULED = "PROGRAMADA", "Programada"
+    COMPLETED = "COMPLETADA", "Completada"
+    CANCELLED = "CANCELADA", "Cancelada"
+
+
 class CaseFile(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     tracking_code = models.CharField(max_length=20, unique=True)
@@ -134,3 +140,38 @@ class AttachedDocument(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class Appointment(models.Model):
+    case_file = models.ForeignKey(
+        CaseFile,
+        on_delete=models.CASCADE,
+        related_name="appointments",
+    )
+    created_by = models.ForeignKey(
+        "users.Employee",
+        on_delete=models.CASCADE,
+        related_name="created_appointments",
+    )
+    inspector = models.ForeignKey(
+        "users.Employee",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="inspections",
+    )
+    scheduled_date = models.DateField()
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+    status = models.CharField(
+        max_length=20,
+        choices=AppointmentStatus.choices,
+        default=AppointmentStatus.SCHEDULED,
+    )
+
+    class Meta:
+        verbose_name = "Cita"
+        verbose_name_plural = "Citas"
+
+    def __str__(self):
+        return f"{self.case_file.tracking_code} - {self.scheduled_date}"
