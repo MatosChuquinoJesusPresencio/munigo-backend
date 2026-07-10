@@ -3,9 +3,14 @@ from organizations.models import Company, Establishment
 
 
 class EstablishmentSerializer(serializers.ModelSerializer):
+    size = serializers.CharField(read_only=True)
+
     class Meta:
         model = Establishment
-        fields = ["id", "company", "name", "address"]
+        fields = [
+            "id", "company", "name", "address",
+            "business_category", "square_meters", "size",
+        ]
 
 
 class CompanySerializer(serializers.ModelSerializer):
