@@ -13,6 +13,15 @@ class Position(models.TextChoices):
     OFFICIAL = "FUNCIONARIO", "Funcionario"
 
 
+class Area(models.TextChoices):
+    FISCALIZATION = "FISCALIZACION", "Fiscalización"
+    TAXATION = "TRIBUTACION", "Tributación"
+    URBAN_DEVELOPMENT = "DESARROLLO_URBANO", "Desarrollo Urbano"
+    LICENSING = "LICENCIAS", "Licencias"
+    ADMINISTRATION = "ADMINISTRACION", "Administración"
+    OTHER = "OTRO", "Otro"
+
+
 class DocumentType(models.TextChoices):
     DNI = "DNI", "DNI"
     RUC = "RUC", "RUC"
@@ -63,7 +72,7 @@ class Employee(models.Model):
         related_name="employee",
     )
     position = models.CharField(max_length=20, choices=Position.choices)
-    area = models.CharField(max_length=50)
+    area = models.CharField(max_length=30, choices=Area.choices)
 
     class Meta:
         verbose_name = "Empleado"

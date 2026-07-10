@@ -2,7 +2,6 @@ from django.db import models
 
 
 class InspectionResult(models.TextChoices):
-    PENDING = "PENDIENTE", "Pendiente"
     APPROVED = "APROBADO", "Aprobado"
     REJECTED = "NO_APROBADO", "No aprobado"
 

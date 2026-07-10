@@ -59,6 +59,7 @@ class CaseFile(models.Model):
     procedure_type = models.CharField(
         max_length=50,
         choices=ProcedureType.choices,
+        db_index=True,
     )
 
     risk_level = models.CharField(
@@ -70,6 +71,7 @@ class CaseFile(models.Model):
         max_length=50,
         choices=CaseFileStatus.choices,
         default=CaseFileStatus.DRAFT,
+        db_index=True,
     )
 
     class Meta:
@@ -88,6 +90,7 @@ class Requirement(models.Model):
     procedure_type = models.CharField(
         max_length=50,
         choices=ProcedureType.choices,
+        db_index=True,
     )
 
     class Meta:
@@ -113,6 +116,12 @@ class ProcedureRequirement(models.Model):
     class Meta:
         verbose_name = "Requisito del expediente"
         verbose_name_plural = "Requisitos del expediente"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["case_file", "requirement"],
+                name="unique_case_file_requirement",
+            )
+        ]
 
     def __str__(self):
         return f"{self.case_file.tracking_code} - {self.requirement.name}"
@@ -158,7 +167,7 @@ class Appointment(models.Model):
         on_delete=models.CASCADE,
         null=True,
         blank=True,
-        related_name="inspections",
+        related_name="assigned_appointments",
     )
     scheduled_date = models.DateField()
     start_time = models.TimeField()
@@ -167,6 +176,7 @@ class Appointment(models.Model):
         max_length=20,
         choices=AppointmentStatus.choices,
         default=AppointmentStatus.SCHEDULED,
+        db_index=True,
     )
 
     class Meta:

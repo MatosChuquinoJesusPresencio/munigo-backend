@@ -27,6 +27,13 @@ class Company(models.Model):
         related_name="companies",
     )
 
+    class Meta:
+        verbose_name = "Empresa"
+        verbose_name_plural = "Empresas"
+
+    def __str__(self):
+        return f"{self.business_name} - {self.ruc}"
+
 
 class Establishment(models.Model):
     company = models.ForeignKey(
@@ -50,6 +57,13 @@ class Establishment(models.Model):
         if self.square_meters <= 200:
             return "MEDIANO"
         return "GRANDE"
+
+    class Meta:
+        verbose_name = "Establecimiento"
+        verbose_name_plural = "Establecimientos"
+
+    def __str__(self):
+        return f"{self.name} - {self.address}"
 
     def get_risk_level(self) -> str:
         return RISK_MATRIX.get(self.business_category, {}).get(self.size, "BAJO")
