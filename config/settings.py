@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'organizations',
     'procedures',
     'notifications',
+    'inspections',
 ]
 
 MIDDLEWARE = [
