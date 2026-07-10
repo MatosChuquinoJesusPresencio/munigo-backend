@@ -1,6 +1,16 @@
 from rest_framework import serializers
 
-from procedures.models import CaseFile
+from procedures.models import CaseFile, Requirement, AllowedFormat
+
+
+class RequirementSerializer(serializers.ModelSerializer):
+    allowed_formats = serializers.ListField(
+        child=serializers.ChoiceField(choices=AllowedFormat.choices),
+    )
+
+    class Meta:
+        model = Requirement
+        fields = "__all__"
 
 
 class CaseFileSerializer(serializers.ModelSerializer):

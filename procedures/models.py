@@ -6,6 +6,13 @@ class ProcedureType(models.TextChoices):
     ITSE = "ITSE", "ITSE"
 
 
+class AllowedFormat(models.TextChoices):
+    PDF = "PDF", "PDF"
+    PNG = "PNG", "PNG"
+    JPG = "JPG", "JPG"
+    JPEG = "JPEG", "JPEG"
+
+
 class RiskLevel(models.TextChoices):
     LOW = "BAJO", "Bajo"
     MEDIUM = "MEDIO", "Medio"
@@ -20,6 +27,12 @@ class CaseFileStatus(models.TextChoices):
     APPROVED = "APROBADO", "Aprobado"
     OBSERVED = "OBSERVADO", "Observado"
     REJECTED = "RECHAZADO", "Rechazado"
+
+
+class ValidationStatus(models.TextChoices):
+    PENDING = "PENDIENTE", "Pendiente"
+    APPROVED = "APROBADO", "Aprobado"
+    OBSERVED = "OBSERVADO", "Observado"
 
 
 class CaseFile(models.Model):
@@ -59,3 +72,65 @@ class CaseFile(models.Model):
 
     def __str__(self):
         return f"{self.tracking_code} - {self.get_procedure_type_display()}"
+
+
+class Requirement(models.Model):
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    allowed_formats = models.JSONField(default=list)
+    is_required = models.BooleanField(default=True)
+    procedure_type = models.CharField(
+        max_length=50,
+        choices=ProcedureType.choices,
+    )
+
+    class Meta:
+        verbose_name = "Requisito"
+        verbose_name_plural = "Requisitos"
+
+    def __str__(self):
+        return self.name
+
+
+class ProcedureRequirement(models.Model):
+    case_file = models.ForeignKey(
+        CaseFile,
+        on_delete=models.CASCADE,
+        related_name="procedure_requirements",
+    )
+    requirement = models.ForeignKey(
+        Requirement,
+        on_delete=models.CASCADE,
+    )
+    fulfilled = models.BooleanField(default=False)
+
+    class Meta:
+        verbose_name = "Requisito del expediente"
+        verbose_name_plural = "Requisitos del expediente"
+
+    def __str__(self):
+        return f"{self.case_file.tracking_code} - {self.requirement.name}"
+
+
+class AttachedDocument(models.Model):
+    procedure_requirement = models.ForeignKey(
+        ProcedureRequirement,
+        on_delete=models.CASCADE,
+        related_name="documents",
+    )
+    name = models.CharField(max_length=255)
+    file = models.FileField(upload_to="documents/%Y/%m/%d/")
+    validation_status = models.CharField(
+        max_length=20,
+        choices=ValidationStatus.choices,
+        default=ValidationStatus.PENDING,
+    )
+    observations = models.TextField(blank=True)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Documento adjunto"
+        verbose_name_plural = "Documentos adjuntos"
+
+    def __str__(self):
+        return self.name
