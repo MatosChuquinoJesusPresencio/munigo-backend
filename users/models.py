@@ -8,16 +8,16 @@ class Role(models.TextChoices):
 
 
 class Position(models.TextChoices):
-    MANAGER = "MANAGER", "Gerente"
+    MANAGER = "GERENTE", "Gerente"
     INSPECTOR = "INSPECTOR", "Inspector"
-    OFFICIAL = "OFFICIAL", "Funcionario"
+    OFFICIAL = "FUNCIONARIO", "Funcionario"
 
 
 class DocumentType(models.TextChoices):
     DNI = "DNI", "DNI"
     RUC = "RUC", "RUC"
-    FOREIGN_ID_CARD = "FOREIGN_ID_CARD", "Carné de Extranjería"
-    PASSPORT = "PASSPORT", "Pasaporte"
+    FOREIGN_ID_CARD = "CARNE_DE_EXTRANJERIA", "Carné de Extranjería"
+    PASSPORT = "PASAPORTE", "Pasaporte"
 
 
 class User(AbstractUser):
