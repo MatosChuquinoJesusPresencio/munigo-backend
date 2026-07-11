@@ -12,6 +12,19 @@ class EstablishmentSerializer(serializers.ModelSerializer):
             "business_category", "square_meters", "size",
         ]
 
+    def validate(self, data):
+        company = data["company"]
+        name = data["name"]
+        instance = self.instance
+        exists = Establishment.objects.filter(company=company, name__iexact=name)
+        if instance:
+            exists = exists.exclude(pk=instance.pk)
+        if exists.exists():
+            raise serializers.ValidationError(
+                {"name": "Ya existe un establecimiento con este nombre en esta empresa."}
+            )
+        return data
+
 
 class CompanySerializer(serializers.ModelSerializer):
     establishments = EstablishmentSerializer(many=True, read_only=True)
@@ -19,7 +32,10 @@ class CompanySerializer(serializers.ModelSerializer):
     class Meta:
         model = Company
         fields = ["id", "business_name", "ruc", "citizens", "establishments"]
-        extra_kwargs = {"citizens": {"read_only": True}}
+        extra_kwargs = {
+            "citizens": {"read_only": True},
+            "ruc": {"error_messages": {"unique": "Este RUC ya está registrado."}},
+        }
 
 
 class CompanyListSerializer(serializers.ModelSerializer):
