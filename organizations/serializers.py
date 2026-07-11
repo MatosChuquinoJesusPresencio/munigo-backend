@@ -23,9 +23,14 @@ class CompanySerializer(serializers.ModelSerializer):
 
 
 class CompanyListSerializer(serializers.ModelSerializer):
+    establishments_count = serializers.SerializerMethodField()
+
     class Meta:
         model = Company
-        fields = ["id", "business_name", "ruc"]
+        fields = ["id", "business_name", "ruc", "establishments_count"]
+
+    def get_establishments_count(self, obj):
+        return obj.establishments.count()
 
 
 class AddCitizenSerializer(serializers.Serializer):

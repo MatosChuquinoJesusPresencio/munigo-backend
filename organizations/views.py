@@ -1,3 +1,4 @@
+from django.db.models import Q
 from rest_framework import serializers, viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -29,13 +30,30 @@ class CompanyViewSet(viewsets.ModelViewSet):
         citizen = Citizen.objects.get(user=self.request.user)
         company.citizens.add(citizen)
 
+    @action(detail=False, methods=["get"])
+    def search(self, request):
+        query = request.query_params.get("q", "").strip()
+        if not query:
+            return Response([], status=status.HTTP_200_OK)
+
+        citizen = Citizen.objects.get(user=request.user)
+        companies = Company.objects.filter(
+            Q(business_name__icontains=query) | Q(ruc__icontains=query)
+        ).exclude(citizens=citizen)[:20]
+
+        serializer = CompanyListSerializer(companies, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
     @action(detail=True, methods=["post"])
     def add_citizen(self, request, pk=None):
-        company = self.get_object()
-        serializer = AddCitizenSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        citizen = Citizen.objects.get(id=serializer.validated_data["citizen_id"])
+        try:
+            company = Company.objects.get(pk=pk)
+        except Company.DoesNotExist:
+            return Response(
+                {"detail": "Empresa no encontrada."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        citizen = Citizen.objects.get(user=request.user)
         if company.citizens.filter(id=citizen.id).exists():
             return Response(
                 {"detail": "El ciudadano ya pertenece a esta empresa."},

@@ -1,6 +1,3 @@
-import unicodedata
-import re
-
 from rest_framework import serializers
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
@@ -8,14 +5,8 @@ from django.contrib.auth import authenticate
 from users.models import User, Citizen, Employee, Role, DocumentType
 
 
-def generate_username(first_name: str, last_name: str) -> str:
-    def clean(text: str) -> str:
-        text = text.lower()
-        text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
-        text = re.sub(r"[^a-z0-9]", "", text)
-        return text
-
-    return f"{clean(first_name)}_{clean(last_name)}"
+def generate_username(first_name: str, last_name: str, document_number: str) -> str:
+    return document_number
 
 
 class CitizenSerializer(serializers.ModelSerializer):
@@ -61,6 +52,7 @@ class RegisterSerializer(serializers.Serializer):
         username = generate_username(
             validated_data["first_name"],
             validated_data["last_name"],
+            validated_data["document_number"],
         )
 
         user = User.objects.create_user(
