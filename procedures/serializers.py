@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from procedures.models import CaseFile, Requirement, AllowedFormat, Appointment
+from procedures.models import CaseFile, Requirement, AllowedFormat, Appointment, ProcedureRequirement, AttachedDocument
 
 
 class RequirementSerializer(serializers.ModelSerializer):
@@ -11,6 +11,22 @@ class RequirementSerializer(serializers.ModelSerializer):
     class Meta:
         model = Requirement
         fields = "__all__"
+
+
+class AttachedDocumentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AttachedDocument
+        fields = ["id", "name", "file", "validation_status", "observations", "uploaded_at"]
+        read_only_fields = ["validation_status", "observations", "uploaded_at"]
+
+
+class ProcedureRequirementSerializer(serializers.ModelSerializer):
+    requirement = RequirementSerializer(read_only=True)
+    documents = AttachedDocumentSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = ProcedureRequirement
+        fields = ["id", "requirement", "fulfilled", "documents"]
 
 
 class CaseFileListSerializer(serializers.ModelSerializer):
@@ -29,13 +45,14 @@ class CaseFileListSerializer(serializers.ModelSerializer):
 class CaseFileDetailSerializer(serializers.ModelSerializer):
     establishment_name = serializers.CharField(source='establishment.name', read_only=True)
     company_name = serializers.CharField(source='establishment.company.business_name', read_only=True)
+    procedure_requirements = ProcedureRequirementSerializer(many=True, read_only=True)
 
     class Meta:
         model = CaseFile
         fields = [
             "id", "tracking_code", "created_at",
             "citizen", "establishment", "establishment_name", "company_name",
-            "procedure_type", "risk_level", "status",
+            "procedure_type", "risk_level", "status", "procedure_requirements",
         ]
         read_only_fields = ["tracking_code", "created_at", "risk_level", "status", "citizen"]
 
@@ -53,7 +70,15 @@ class CaseFileDetailSerializer(serializers.ModelSerializer):
         establishment = validated_data["establishment"]
         validated_data["risk_level"] = establishment.get_risk_level()
         validated_data["tracking_code"] = f"EXP-{uuid.uuid4().hex[:8].upper()}"
-        return super().create(validated_data)
+        case_file = super().create(validated_data)
+
+        requirements = Requirement.objects.filter(procedure_type=case_file.procedure_type)
+        ProcedureRequirement.objects.bulk_create([
+            ProcedureRequirement(case_file=case_file, requirement=req)
+            for req in requirements
+        ])
+
+        return case_file
 
 
 class AppointmentSerializer(serializers.ModelSerializer):

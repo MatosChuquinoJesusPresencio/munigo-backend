@@ -1,11 +1,13 @@
-from rest_framework import viewsets, permissions
+from rest_framework import viewsets, permissions, parsers
 
-from procedures.models import CaseFile, Requirement, Appointment
+from procedures.models import CaseFile, Requirement, Appointment, ProcedureRequirement, AttachedDocument
 from procedures.serializers import (
     CaseFileListSerializer,
     CaseFileDetailSerializer,
     RequirementSerializer,
     AppointmentSerializer,
+    ProcedureRequirementSerializer,
+    AttachedDocumentSerializer,
 )
 
 
@@ -34,6 +36,34 @@ class CaseFileViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(citizen=self.request.user.citizen)
+
+
+class ProcedureRequirementViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = ProcedureRequirementSerializer
+
+    def get_queryset(self):
+        qs = ProcedureRequirement.objects.select_related('requirement').prefetch_related('documents').filter(
+            case_file__citizen__user=self.request.user
+        )
+        case_file_id = self.request.query_params.get("case_file")
+        if case_file_id:
+            qs = qs.filter(case_file_id=case_file_id)
+        return qs
+
+
+class AttachedDocumentViewSet(viewsets.ModelViewSet):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = AttachedDocumentSerializer
+    parser_classes = [parsers.MultiPartParser, parsers.FormParser]
+
+    def get_queryset(self):
+        return AttachedDocument.objects.filter(
+            procedure_requirement__case_file__citizen__user=self.request.user
+        )
+
+    def perform_create(self, serializer):
+        serializer.save()
 
 
 class AppointmentViewSet(viewsets.ModelViewSet):
