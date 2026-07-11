@@ -16,8 +16,14 @@ class RequirementSerializer(serializers.ModelSerializer):
 class AttachedDocumentSerializer(serializers.ModelSerializer):
     class Meta:
         model = AttachedDocument
-        fields = ["id", "name", "file", "validation_status", "observations", "uploaded_at"]
+        fields = ["id", "procedure_requirement", "name", "file", "validation_status", "observations", "uploaded_at"]
         read_only_fields = ["validation_status", "observations", "uploaded_at"]
+
+    def validate_procedure_requirement(self, value):
+        if self.instance is None:
+            if AttachedDocument.objects.filter(procedure_requirement=value).exists():
+                raise serializers.ValidationError("Ya existe un documento para este requisito.")
+        return value
 
 
 class ProcedureRequirementSerializer(serializers.ModelSerializer):
