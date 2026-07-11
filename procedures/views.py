@@ -2,7 +2,8 @@ from rest_framework import viewsets, permissions
 
 from procedures.models import CaseFile, Requirement, Appointment
 from procedures.serializers import (
-    CaseFileSerializer,
+    CaseFileListSerializer,
+    CaseFileDetailSerializer,
     RequirementSerializer,
     AppointmentSerializer,
 )
@@ -22,13 +23,17 @@ class RequirementViewSet(viewsets.ReadOnlyModelViewSet):
 
 class CaseFileViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
-    serializer_class = CaseFileSerializer
+
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return CaseFileListSerializer
+        return CaseFileDetailSerializer
 
     def get_queryset(self):
-        return CaseFile.objects.filter(citizen__user=self.request.user)
+        return CaseFile.objects.select_related('establishment', 'establishment__company').filter(citizen__user=self.request.user)
 
     def perform_create(self, serializer):
-        serializer.save()
+        serializer.save(citizen=self.request.user.citizen)
 
 
 class AppointmentViewSet(viewsets.ModelViewSet):
@@ -36,4 +41,4 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     serializer_class = AppointmentSerializer
 
     def get_queryset(self):
-        return Appointment.objects.filter(case_file__citizen__user=self.request.user)
+        return Appointment.objects.select_related('case_file', 'inspector__citizen__user').filter(case_file__citizen__user=self.request.user)

@@ -13,15 +13,31 @@ class RequirementSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
-class CaseFileSerializer(serializers.ModelSerializer):
+class CaseFileListSerializer(serializers.ModelSerializer):
+    establishment_name = serializers.CharField(source='establishment.name', read_only=True)
+    company_name = serializers.CharField(source='establishment.company.business_name', read_only=True)
+
     class Meta:
         model = CaseFile
         fields = [
             "id", "tracking_code", "created_at",
-            "citizen", "establishment",
+            "citizen", "establishment", "establishment_name", "company_name",
             "procedure_type", "risk_level", "status",
         ]
-        read_only_fields = ["tracking_code", "created_at", "risk_level", "status"]
+
+
+class CaseFileDetailSerializer(serializers.ModelSerializer):
+    establishment_name = serializers.CharField(source='establishment.name', read_only=True)
+    company_name = serializers.CharField(source='establishment.company.business_name', read_only=True)
+
+    class Meta:
+        model = CaseFile
+        fields = [
+            "id", "tracking_code", "created_at",
+            "citizen", "establishment", "establishment_name", "company_name",
+            "procedure_type", "risk_level", "status",
+        ]
+        read_only_fields = ["tracking_code", "created_at", "risk_level", "status", "citizen"]
 
     def validate_establishment(self, value):
         from organizations.models import Establishment
