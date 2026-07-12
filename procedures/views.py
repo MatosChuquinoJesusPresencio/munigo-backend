@@ -1,6 +1,8 @@
-from rest_framework import viewsets, permissions, parsers
+from rest_framework import viewsets, permissions, parsers, status
+from rest_framework.decorators import action
+from rest_framework.response import Response
 
-from procedures.models import CaseFile, Requirement, Appointment, ProcedureRequirement, AttachedDocument
+from procedures.models import CaseFile, CaseFileStatus, Requirement, Appointment, ProcedureRequirement, AttachedDocument
 from procedures.serializers import (
     CaseFileListSerializer,
     CaseFileDetailSerializer,
@@ -37,6 +39,33 @@ class CaseFileViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(citizen=self.request.user.citizen)
 
+    @action(detail=True, methods=["post"], url_path="submit")
+    def submit(self, request, pk=None):
+        case_file = self.get_object()
+
+        if case_file.status != CaseFileStatus.DRAFT:
+            return Response(
+                {"detail": "Solo se pueden enviar expedientes en borrador."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        unfulfilled = ProcedureRequirement.objects.filter(
+            case_file=case_file,
+            requirement__is_required=True,
+            fulfilled=False,
+        )
+        if unfulfilled.exists():
+            names = list(unfulfilled.values_list("requirement__name", flat=True))
+            return Response(
+                {"detail": f"Faltan requisitos obligatorios: {', '.join(names)}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        case_file.status = CaseFileStatus.PENDING_REVIEW
+        case_file.save(update_fields=["status"])
+
+        return Response(CaseFileDetailSerializer(case_file).data)
+
 
 class ProcedureRequirementViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
@@ -63,7 +92,16 @@ class AttachedDocumentViewSet(viewsets.ModelViewSet):
         )
 
     def perform_create(self, serializer):
-        serializer.save()
+        doc = serializer.save()
+        doc.procedure_requirement.fulfilled = True
+        doc.procedure_requirement.save(update_fields=["fulfilled"])
+
+    def perform_destroy(self, instance):
+        pr = instance.procedure_requirement
+        instance.delete()
+        if not pr.documents.exists():
+            pr.fulfilled = False
+            pr.save(update_fields=["fulfilled"])
 
 
 class AppointmentViewSet(viewsets.ModelViewSet):
