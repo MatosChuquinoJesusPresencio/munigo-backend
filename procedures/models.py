@@ -134,7 +134,7 @@ class AttachedDocument(models.Model):
         related_name="documents",
     )
     name = models.CharField(max_length=255)
-    file = models.FileField(upload_to="documents/%Y/%m/%d/")
+    file = models.CharField(max_length=500)
     validation_status = models.CharField(
         max_length=20,
         choices=ValidationStatus.choices,

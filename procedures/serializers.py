@@ -22,6 +22,11 @@ class AttachedDocumentSerializer(serializers.ModelSerializer):
         fields = ["id", "procedure_requirement", "name", "file", "validation_status", "observations", "uploaded_at"]
         read_only_fields = ["validation_status", "observations", "uploaded_at"]
 
+    def validate_file(self, value):
+        if not value.startswith('http'):
+            raise serializers.ValidationError("La URL del archivo debe ser válida.")
+        return value
+
     def validate_procedure_requirement(self, value):
         if self.instance is None:
             if AttachedDocument.objects.filter(procedure_requirement=value).exists():

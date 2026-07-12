@@ -252,7 +252,7 @@ class ProcedureRequirementViewSet(viewsets.ReadOnlyModelViewSet):
 class AttachedDocumentViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = AttachedDocumentSerializer
-    parser_classes = [parsers.MultiPartParser, parsers.FormParser, parsers.JSONParser]
+    parser_classes = [parsers.JSONParser]
 
     def get_queryset(self):
         user = self.request.user
