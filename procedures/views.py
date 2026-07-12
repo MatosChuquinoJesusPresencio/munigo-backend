@@ -95,6 +95,14 @@ class CaseFileViewSet(viewsets.ModelViewSet):
         serializer = CaseFileListSerializer(qs, many=True)
         return Response(serializer.data)
 
+    @action(detail=False, methods=["get"], url_path="history")
+    def history(self, request):
+        qs = CaseFile.objects.select_related(
+            "establishment", "establishment__company", "citizen__user"
+        ).exclude(status=CaseFileStatus.PENDING_REVIEW).exclude(status=CaseFileStatus.DRAFT)
+        serializer = CaseFileListSerializer(qs, many=True)
+        return Response(serializer.data)
+
     @action(detail=True, methods=["post"], url_path="approve-documents")
     def approve_documents(self, request, pk=None):
         case_file = self.get_object()
@@ -182,53 +190,58 @@ class CaseFileViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"], url_path="set-status")
     def set_status(self, request, pk=None):
-        case_file = self.get_object()
+        try:
+            case_file = self.get_object()
 
-        serializer = CaseFileSetStatusSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        new_status = serializer.validated_data["status"]
+            serializer = CaseFileSetStatusSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            new_status = serializer.validated_data["status"]
 
-        allowed_transitions = {
-            CaseFileStatus.APPROVED: [CaseFileStatus.PENDING_INSPECTION],
-            CaseFileStatus.OBSERVED: [CaseFileStatus.PENDING_INSPECTION, CaseFileStatus.PENDING_REVIEW],
-            CaseFileStatus.REJECTED: [CaseFileStatus.PENDING_INSPECTION, CaseFileStatus.PENDING_REVIEW],
-        }
+            allowed_transitions = {
+                CaseFileStatus.APPROVED: [CaseFileStatus.PENDING_INSPECTION],
+                CaseFileStatus.OBSERVED: [CaseFileStatus.PENDING_INSPECTION, CaseFileStatus.PENDING_REVIEW],
+                CaseFileStatus.REJECTED: [CaseFileStatus.PENDING_INSPECTION, CaseFileStatus.PENDING_REVIEW],
+            }
 
-        allowed_from_pending = {
-            CaseFileStatus.APPROVED: CaseFileStatus.PENDING_REVISION,
-            CaseFileStatus.REJECTED: CaseFileStatus.PENDING_REVISION,
-        }
+            allowed_from_pending = {
+                CaseFileStatus.APPROVED: CaseFileStatus.PENDING_REVIEW,
+                CaseFileStatus.REJECTED: CaseFileStatus.PENDING_REVIEW,
+            }
 
-        if case_file.status == CaseFileStatus.PENDING_REVISION:
-            if new_status not in allowed_from_pending:
+            if case_file.status == CaseFileStatus.PENDING_REVIEW:
+                if new_status not in allowed_from_pending:
+                    return Response(
+                        {"detail": f"No se puede cambiar de Pendiente de revisión a {new_status}."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+            elif case_file.status not in allowed_transitions.get(new_status, []):
                 return Response(
-                    {"detail": f"No se puede cambiar de Pendiente de revisión a {new_status}."},
+                    {"detail": f"No se puede cambiar de {case_file.get_status_display()} a {new_status}."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-        elif case_file.status not in allowed_transitions.get(new_status, []):
-            return Response(
-                {"detail": f"No se puede cambiar de {case_file.get_status_display()} a {new_status}."},
-                status=status.HTTP_400_BAD_REQUEST,
+
+            case_file.status = new_status
+            case_file.save(update_fields=["status"])
+
+            status_labels = {
+                CaseFileStatus.APPROVED: "aprobado",
+                CaseFileStatus.OBSERVED: "observado",
+                CaseFileStatus.REJECTED: "rechazado",
+            }
+
+            from notifications.models import Notification
+            Notification.objects.create(
+                citizen=case_file.citizen,
+                case_file=case_file,
+                title=f"Trámite {status_labels[new_status]}",
+                message=f"Tu trámite {case_file.tracking_code} fue {status_labels[new_status]}.",
             )
 
-        case_file.status = new_status
-        case_file.save(update_fields=["status"])
-
-        status_labels = {
-            CaseFileStatus.APPROVED: "aprobado",
-            CaseFileStatus.OBSERVED: "observado",
-            CaseFileStatus.REJECTED: "rechazado",
-        }
-
-        from notifications.models import Notification
-        Notification.objects.create(
-            citizen=case_file.citizen,
-            case_file=case_file,
-            title=f"Trámite {status_labels[new_status]}",
-            message=f"Tu trámite {case_file.tracking_code} fue {status_labels[new_status]}.",
-        )
-
-        return Response(CaseFileDetailSerializer(case_file).data)
+            return Response(CaseFileDetailSerializer(case_file).data)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            raise
 
 
 class ProcedureRequirementViewSet(viewsets.ReadOnlyModelViewSet):
