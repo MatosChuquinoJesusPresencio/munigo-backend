@@ -1,6 +1,9 @@
 from rest_framework import serializers
 
-from procedures.models import CaseFile, Requirement, AllowedFormat, Appointment, ProcedureRequirement, AttachedDocument
+from procedures.models import (
+    CaseFile, CaseFileStatus, Requirement, AllowedFormat, ValidationStatus,
+    Appointment, ProcedureRequirement, AttachedDocument,
+)
 
 
 class RequirementSerializer(serializers.ModelSerializer):
@@ -128,3 +131,50 @@ class AppointmentSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data["created_by"] = self.validate_created_by(None)
         return super().create(validated_data)
+
+
+class AttachedDocumentValidateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AttachedDocument
+        fields = ["validation_status", "observations"]
+
+    def validate_validation_status(self, value):
+        if value not in (ValidationStatus.APPROVED, ValidationStatus.OBSERVED):
+            raise serializers.ValidationError(
+                "El estado debe ser APROBADO u OBSERVADO."
+            )
+        return value
+
+
+class AssignInspectorSerializer(serializers.Serializer):
+    inspector_id = serializers.IntegerField()
+    scheduled_date = serializers.DateField()
+    start_time = serializers.TimeField()
+    end_time = serializers.TimeField()
+
+    def validate_inspector_id(self, value):
+        from users.models import Employee
+        try:
+            employee = Employee.objects.get(id=value)
+        except Employee.DoesNotExist:
+            raise serializers.ValidationError("El empleado no existe.")
+        if employee.position != "INSPECTOR":
+            raise serializers.ValidationError("El empleado debe tener cargo de Inspector.")
+        return value
+
+    def validate(self, data):
+        if data["start_time"] >= data["end_time"]:
+            raise serializers.ValidationError(
+                "La hora de inicio debe ser anterior a la hora de fin."
+            )
+        return data
+
+
+class CaseFileSetStatusSerializer(serializers.Serializer):
+    status = serializers.ChoiceField(
+        choices=[
+            (CaseFileStatus.APPROVED, "Aprobado"),
+            (CaseFileStatus.OBSERVED, "Observado"),
+            (CaseFileStatus.REJECTED, "Rechazado"),
+        ]
+    )

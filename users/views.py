@@ -5,8 +5,8 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.views import TokenViewBase
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from users.models import User, BlacklistedToken
-from users.serializers import RegisterSerializer, LoginSerializer, UserSerializer
+from users.models import User, Employee, BlacklistedToken
+from users.serializers import RegisterSerializer, LoginSerializer, UserSerializer, EmployeeSerializer
 
 
 class RegisterView(generics.CreateAPIView):
@@ -49,3 +49,15 @@ class MeView(generics.RetrieveAPIView):
 
     def get_object(self):
         return self.request.user
+
+
+class EmployeeListView(generics.ListAPIView):
+    serializer_class = EmployeeSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        qs = Employee.objects.select_related("citizen__user")
+        position = self.request.query_params.get("position")
+        if position:
+            qs = qs.filter(position=position)
+        return qs

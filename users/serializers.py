@@ -16,9 +16,12 @@ class CitizenSerializer(serializers.ModelSerializer):
 
 
 class EmployeeSerializer(serializers.ModelSerializer):
+    first_name = serializers.CharField(source="citizen.user.first_name", read_only=True)
+    last_name = serializers.CharField(source="citizen.user.last_name", read_only=True)
+
     class Meta:
         model = Employee
-        exclude = ["citizen"]
+        fields = ["id", "position", "area", "first_name", "last_name"]
 
 
 class UserSerializer(serializers.ModelSerializer):
