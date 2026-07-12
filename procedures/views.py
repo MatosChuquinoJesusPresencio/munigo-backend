@@ -4,7 +4,7 @@ from rest_framework.response import Response
 
 from procedures.models import (
     CaseFile, CaseFileStatus, Requirement, Appointment,
-    ProcedureRequirement, AttachedDocument,
+    ProcedureRequirement, AttachedDocument, ValidationStatus,
 )
 from procedures.serializers import (
     CaseFileListSerializer,
@@ -191,10 +191,21 @@ class CaseFileViewSet(viewsets.ModelViewSet):
         allowed_transitions = {
             CaseFileStatus.APPROVED: [CaseFileStatus.PENDING_INSPECTION],
             CaseFileStatus.OBSERVED: [CaseFileStatus.PENDING_INSPECTION, CaseFileStatus.PENDING_REVIEW],
-            CaseFileStatus.RECHAZADO: [CaseFileStatus.PENDING_INSPECTION, CaseFileStatus.PENDING_REVIEW],
+            CaseFileStatus.REJECTED: [CaseFileStatus.PENDING_INSPECTION, CaseFileStatus.PENDING_REVIEW],
         }
 
-        if case_file.status not in allowed_transitions.get(new_status, []):
+        allowed_from_pending = {
+            CaseFileStatus.APPROVED: CaseFileStatus.PENDING_REVISION,
+            CaseFileStatus.REJECTED: CaseFileStatus.PENDING_REVISION,
+        }
+
+        if case_file.status == CaseFileStatus.PENDING_REVISION:
+            if new_status not in allowed_from_pending:
+                return Response(
+                    {"detail": f"No se puede cambiar de Pendiente de revisión a {new_status}."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        elif case_file.status not in allowed_transitions.get(new_status, []):
             return Response(
                 {"detail": f"No se puede cambiar de {case_file.get_status_display()} a {new_status}."},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -206,7 +217,7 @@ class CaseFileViewSet(viewsets.ModelViewSet):
         status_labels = {
             CaseFileStatus.APPROVED: "aprobado",
             CaseFileStatus.OBSERVED: "observado",
-            CaseFileStatus.RECHAZADO: "rechazado",
+            CaseFileStatus.REJECTED: "rechazado",
         }
 
         from notifications.models import Notification
@@ -241,7 +252,7 @@ class ProcedureRequirementViewSet(viewsets.ReadOnlyModelViewSet):
 class AttachedDocumentViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = AttachedDocumentSerializer
-    parser_classes = [parsers.MultiPartParser, parsers.FormParser]
+    parser_classes = [parsers.MultiPartParser, parsers.FormParser, parsers.JSONParser]
 
     def get_queryset(self):
         user = self.request.user

@@ -16,9 +16,10 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.http import JsonResponse, HttpResponse
-from django.urls import path, include
+from django.urls import path, include, re_path
 from django.conf import settings
 from django.conf.urls.static import static
+from django.views.static import serve as media_serve
 
 
 def health_check(request):
@@ -38,4 +39,5 @@ urlpatterns = [
     path('api/procedures/', include('procedures.urls')),
     path('api/notifications/', include('notifications.urls')),
     path('api/inspections/', include('inspections.urls')),
+    re_path(r'^media/(?P<path>.*)$', media_serve, {'document_root': settings.MEDIA_ROOT}),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
