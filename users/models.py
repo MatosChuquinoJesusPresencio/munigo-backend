@@ -24,7 +24,6 @@ class Area(models.TextChoices):
 
 class DocumentType(models.TextChoices):
     DNI = "DNI", "DNI"
-    RUC = "RUC", "RUC"
     FOREIGN_ID_CARD = "CARNE_DE_EXTRANJERIA", "Carné de Extranjería"
     PASSPORT = "PASAPORTE", "Pasaporte"
 

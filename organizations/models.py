@@ -20,7 +20,7 @@ RISK_MATRIX = {
 
 class Company(models.Model):
     business_name = models.CharField(max_length=255)
-    ruc = models.CharField(max_length=11, unique=True)
+    ruc = models.CharField(max_length=13, unique=True)
 
     citizens = models.ManyToManyField(
         "users.Citizen",

@@ -4,6 +4,7 @@ from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated, BasePermission
 from rest_framework_simplejwt.views import TokenViewBase
 from rest_framework_simplejwt.tokens import RefreshToken
+from django.db import transaction
 
 from users.models import User, Employee, BlacklistedToken
 from users.serializers import (
@@ -93,6 +94,7 @@ class EmployeeViewSet(viewsets.ModelViewSet):
             return EmployeeUpdateSerializer
         return EmployeeSerializer
 
+    @transaction.atomic
     def perform_destroy(self, instance):
         user = instance.citizen.user
         instance.delete()

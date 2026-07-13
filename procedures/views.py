@@ -28,8 +28,12 @@ def _is_employee(user):
 
 
 class RequirementViewSet(viewsets.ModelViewSet):
-    permission_classes = [permissions.IsAuthenticated]
     serializer_class = RequirementSerializer
+
+    def get_permissions(self):
+        if self.action in ('list', 'retrieve'):
+            return [permissions.IsAuthenticated()]
+        return [permissions.IsAuthenticated(), IsGerente()]
 
     def get_queryset(self):
         qs = Requirement.objects.all()
@@ -119,7 +123,7 @@ class CaseFileViewSet(viewsets.ModelViewSet):
     def dashboard(self, request):
         if not _is_employee(request.user):
             return Response({"detail": "No autorizado."}, status=status.HTTP_403_FORBIDDEN)
-    def dashboard(self, request):
+
         from django.db.models import Count
 
         total = CaseFile.objects.count()
@@ -180,6 +184,8 @@ class CaseFileViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"], url_path="assign-inspector")
     def assign_inspector(self, request, pk=None):
+        if not _is_employee(request.user):
+            return Response({"detail": "No autorizado."}, status=status.HTTP_403_FORBIDDEN)
         case_file = self.get_object()
 
         if case_file.status != CaseFileStatus.DOCUMENTS_APPROVED:
@@ -197,10 +203,16 @@ class CaseFileViewSet(viewsets.ModelViewSet):
 
         user = request.user
         try:
-            employee = user.citizen.employee
+            employee = request.user.citizen.employee
         except AttributeError:
             return Response(
                 {"detail": "El usuario no es un empleado."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if employee.position != Position.INSPECTOR:
+            return Response(
+                {"detail": "Solo un inspector puede completar inspecciones."},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
@@ -261,7 +273,12 @@ class CaseFileViewSet(viewsets.ModelViewSet):
                 )
 
             case_file.status = new_status
-            case_file.save(update_fields=["status"])
+            observations = serializer.validated_data.get("observations", "").strip()
+            update_fields = ["status"]
+            if observations:
+                case_file.observations = observations
+                update_fields.append("observations")
+            case_file.save(update_fields=update_fields)
 
             status_labels = {
                 CaseFileStatus.APPROVED: "aprobado",

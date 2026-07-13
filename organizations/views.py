@@ -46,13 +46,7 @@ class CompanyViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"])
     def add_citizen(self, request, pk=None):
-        try:
-            company = Company.objects.get(pk=pk)
-        except Company.DoesNotExist:
-            return Response(
-                {"detail": "Empresa no encontrada."},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+        company = self.get_object()
         citizen = Citizen.objects.get(user=request.user)
         if company.citizens.filter(id=citizen.id).exists():
             return Response(

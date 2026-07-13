@@ -1,8 +1,20 @@
 from rest_framework import serializers
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
+from django.db import transaction
 
 from users.models import User, Citizen, Employee, Role, DocumentType, Position, Area
+
+
+class TrimMixin:
+    def to_internal_value(self, data):
+        trimmed = {}
+        for key, value in data.items():
+            if isinstance(value, str):
+                trimmed[key] = value.strip()
+            else:
+                trimmed[key] = value
+        return super().to_internal_value(trimmed)
 
 
 def generate_username(first_name: str, last_name: str, document_number: str) -> str:
@@ -25,7 +37,7 @@ class EmployeeSerializer(serializers.ModelSerializer):
         fields = ["id", "position", "area", "first_name", "last_name", "email"]
 
 
-class EmployeeCreateSerializer(serializers.Serializer):
+class EmployeeCreateSerializer(TrimMixin, serializers.Serializer):
     first_name = serializers.CharField(max_length=150)
     last_name = serializers.CharField(max_length=150)
     email = serializers.EmailField()
@@ -45,6 +57,7 @@ class EmployeeCreateSerializer(serializers.Serializer):
             raise serializers.ValidationError("Este documento ya está registrado.")
         return value
 
+    @transaction.atomic
     def create(self, validated_data):
         user = User.objects.create_user(
             username=validated_data["document_number"],
@@ -70,7 +83,7 @@ class EmployeeCreateSerializer(serializers.Serializer):
         return EmployeeSerializer(instance, context=self.context).data
 
 
-class EmployeeUpdateSerializer(serializers.Serializer):
+class EmployeeUpdateSerializer(TrimMixin, serializers.Serializer):
     position = serializers.ChoiceField(choices=Position.choices)
     area = serializers.ChoiceField(choices=Area.choices)
 
@@ -98,7 +111,7 @@ class UserSerializer(serializers.ModelSerializer):
         return None
 
 
-class RegisterSerializer(serializers.Serializer):
+class RegisterSerializer(TrimMixin, serializers.Serializer):
     first_name = serializers.CharField(max_length=150)
     last_name = serializers.CharField(max_length=150)
     email = serializers.EmailField()
@@ -116,6 +129,7 @@ class RegisterSerializer(serializers.Serializer):
             raise serializers.ValidationError("Este documento ya está registrado.")
         return value
 
+    @transaction.atomic
     def create(self, validated_data):
         username = generate_username(
             validated_data["first_name"],

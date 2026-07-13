@@ -1,13 +1,26 @@
 from rest_framework import serializers
+from django.db import transaction
+from datetime import date as date_type
 
 from procedures.models import (
     CaseFile, CaseFileStatus, Requirement, AllowedFormat, ValidationStatus,
-    Appointment, ProcedureRequirement, AttachedDocument,
+    Appointment, AppointmentStatus, ProcedureRequirement, AttachedDocument,
 )
 from users.models import Position
 
 
-class RequirementSerializer(serializers.ModelSerializer):
+class TrimMixin:
+    def to_internal_value(self, data):
+        trimmed = {}
+        for key, value in data.items():
+            if isinstance(value, str):
+                trimmed[key] = value.strip()
+            else:
+                trimmed[key] = value
+        return super().to_internal_value(trimmed)
+
+
+class RequirementSerializer(TrimMixin, serializers.ModelSerializer):
     allowed_formats = serializers.ListField(
         child=serializers.ChoiceField(choices=AllowedFormat.choices),
     )
@@ -17,7 +30,7 @@ class RequirementSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
-class AttachedDocumentSerializer(serializers.ModelSerializer):
+class AttachedDocumentSerializer(TrimMixin, serializers.ModelSerializer):
     class Meta:
         model = AttachedDocument
         fields = ["id", "procedure_requirement", "name", "file", "validation_status", "observations", "uploaded_at"]
@@ -26,6 +39,12 @@ class AttachedDocumentSerializer(serializers.ModelSerializer):
     def validate_file(self, value):
         if not value.startswith('http'):
             raise serializers.ValidationError("La URL del archivo debe ser válida.")
+        allowed_extensions = ('.pdf', '.png', '.jpeg', '.jpg')
+        lower = value.lower().split('?')[0]
+        if not lower.endswith(allowed_extensions):
+            raise serializers.ValidationError(
+                "Formato no permitido. Solo se aceptan PDF, PNG y JPEG."
+            )
         return value
 
     def validate_procedure_requirement(self, value):
@@ -78,7 +97,7 @@ class CaseFileListSerializer(serializers.ModelSerializer):
         return appt.end_time if appt else None
 
 
-class CaseFileDetailSerializer(serializers.ModelSerializer):
+class CaseFileDetailSerializer(TrimMixin, serializers.ModelSerializer):
     establishment_name = serializers.CharField(source='establishment.name', read_only=True)
     company_name = serializers.CharField(source='establishment.company.business_name', read_only=True)
     procedure_requirements = ProcedureRequirementSerializer(many=True, read_only=True)
@@ -122,11 +141,20 @@ class CaseFileDetailSerializer(serializers.ModelSerializer):
             )
         return value
 
+    @transaction.atomic
     def create(self, validated_data):
         import uuid
         establishment = validated_data["establishment"]
         validated_data["risk_level"] = establishment.get_risk_level()
-        validated_data["tracking_code"] = f"EXP-{uuid.uuid4().hex[:8].upper()}"
+
+        for _ in range(5):
+            code = f"EXP-{uuid.uuid4().hex[:8].upper()}"
+            if not CaseFile.objects.filter(tracking_code=code).exists():
+                validated_data["tracking_code"] = code
+                break
+        else:
+            validated_data["tracking_code"] = f"EXP-{uuid.uuid4().hex[:8].upper()}"
+
         case_file = super().create(validated_data)
 
         requirements = Requirement.objects.filter(procedure_type=case_file.procedure_type)
@@ -138,7 +166,7 @@ class CaseFileDetailSerializer(serializers.ModelSerializer):
         return case_file
 
 
-class AppointmentSerializer(serializers.ModelSerializer):
+class AppointmentSerializer(TrimMixin, serializers.ModelSerializer):
     created_by = serializers.HiddenField(default=None)
     case_file_tracking = serializers.CharField(source='case_file.tracking_code', read_only=True)
     case_file_procedure_type = serializers.SerializerMethodField()
@@ -186,11 +214,35 @@ class AppointmentSerializer(serializers.ModelSerializer):
             )
         return value
 
+    def validate_scheduled_date(self, value):
+        if value < date_type.today():
+            raise serializers.ValidationError(
+                "La fecha de la cita no puede ser en el pasado."
+            )
+        return value
+
     def validate(self, data):
         if data["start_time"] >= data["end_time"]:
             raise serializers.ValidationError(
                 "La hora de inicio debe ser anterior a la hora de fin."
             )
+        inspector = data.get("inspector")
+        if inspector:
+            scheduled_date = data["scheduled_date"]
+            start_time = data["start_time"]
+            end_time = data["end_time"]
+            conflict = Appointment.objects.filter(
+                inspector=inspector,
+                scheduled_date=scheduled_date,
+                status__in=[AppointmentStatus.PROGRAMADA, AppointmentStatus.CONFIRMADA],
+            ).exclude(pk=getattr(self.instance, 'pk', None)).filter(
+                start_time__lt=end_time,
+                end_time__gt=start_time,
+            ).exists()
+            if conflict:
+                raise serializers.ValidationError(
+                    "El inspector ya tiene una cita programada en ese horario."
+                )
         return data
 
     def create(self, validated_data):
@@ -198,7 +250,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 
-class AttachedDocumentValidateSerializer(serializers.ModelSerializer):
+class AttachedDocumentValidateSerializer(TrimMixin, serializers.ModelSerializer):
     class Meta:
         model = AttachedDocument
         fields = ["validation_status", "observations"]
@@ -211,7 +263,7 @@ class AttachedDocumentValidateSerializer(serializers.ModelSerializer):
         return value
 
 
-class AssignInspectorSerializer(serializers.Serializer):
+class AssignInspectorSerializer(TrimMixin, serializers.Serializer):
     inspector_id = serializers.IntegerField()
     scheduled_date = serializers.DateField()
     start_time = serializers.TimeField()
@@ -235,7 +287,7 @@ class AssignInspectorSerializer(serializers.Serializer):
         return data
 
 
-class CaseFileSetStatusSerializer(serializers.Serializer):
+class CaseFileSetStatusSerializer(TrimMixin, serializers.Serializer):
     status = serializers.ChoiceField(
         choices=[
             (CaseFileStatus.APPROVED, "Aprobado"),
@@ -243,3 +295,13 @@ class CaseFileSetStatusSerializer(serializers.Serializer):
             (CaseFileStatus.REJECTED, "Rechazado"),
         ]
     )
+    observations = serializers.CharField(required=False, allow_blank=True)
+
+    def validate(self, data):
+        if data["status"] == CaseFileStatus.OBSERVED:
+            obs = data.get("observations", "").strip()
+            if not obs:
+                raise serializers.ValidationError(
+                    {"observations": "Debe ingresar observaciones al marcar como Observado."}
+                )
+        return data
