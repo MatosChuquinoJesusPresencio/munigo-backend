@@ -1,4 +1,4 @@
-from rest_framework import generics, status
+from rest_framework import generics, viewsets, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -6,7 +6,10 @@ from rest_framework_simplejwt.views import TokenViewBase
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from users.models import User, Employee, BlacklistedToken
-from users.serializers import RegisterSerializer, LoginSerializer, UserSerializer, EmployeeSerializer
+from users.serializers import (
+    RegisterSerializer, LoginSerializer, UserSerializer,
+    EmployeeSerializer, EmployeeCreateSerializer, EmployeeUpdateSerializer,
+)
 
 
 class RegisterView(generics.CreateAPIView):
@@ -51,7 +54,7 @@ class MeView(generics.RetrieveAPIView):
         return self.request.user
 
 
-class EmployeeListView(generics.ListAPIView):
+class EmployeeViewSet(viewsets.ModelViewSet):
     serializer_class = EmployeeSerializer
     permission_classes = [IsAuthenticated]
 
@@ -61,3 +64,15 @@ class EmployeeListView(generics.ListAPIView):
         if position:
             qs = qs.filter(position=position)
         return qs
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return EmployeeCreateSerializer
+        if self.action in ("update", "partial_update"):
+            return EmployeeUpdateSerializer
+        return EmployeeSerializer
+
+    def perform_destroy(self, instance):
+        user = instance.citizen.user
+        instance.delete()
+        user.delete()

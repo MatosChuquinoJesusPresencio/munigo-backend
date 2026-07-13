@@ -18,10 +18,70 @@ class CitizenSerializer(serializers.ModelSerializer):
 class EmployeeSerializer(serializers.ModelSerializer):
     first_name = serializers.CharField(source="citizen.user.first_name", read_only=True)
     last_name = serializers.CharField(source="citizen.user.last_name", read_only=True)
+    email = serializers.CharField(source="citizen.user.email", read_only=True)
 
     class Meta:
         model = Employee
-        fields = ["id", "position", "area", "first_name", "last_name"]
+        fields = ["id", "position", "area", "first_name", "last_name", "email"]
+
+
+class EmployeeCreateSerializer(serializers.Serializer):
+    first_name = serializers.CharField(max_length=150)
+    last_name = serializers.CharField(max_length=150)
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True, min_length=6)
+    document_type = serializers.ChoiceField(choices=DocumentType.choices)
+    document_number = serializers.CharField(max_length=22)
+    position = serializers.ChoiceField(choices=[("GERENTE", "Gerente"), ("INSPECTOR", "Inspector"), ("FUNCIONARIO", "Funcionario")])
+    area = serializers.ChoiceField(choices=[("FISCALIZACION", "Fiscalización"), ("TRIBUTACION", "Tributación"), ("DESARROLLO_URBANO", "Desarrollo Urbano"), ("LICENCIAS", "Licencias"), ("ADMINISTRACION", "Administración"), ("OTRO", "Otro")])
+
+    def validate_email(self, value):
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("Este email ya está registrado.")
+        return value
+
+    def validate_document_number(self, value):
+        if Citizen.objects.filter(document_number=value).exists():
+            raise serializers.ValidationError("Este documento ya está registrado.")
+        return value
+
+    def create(self, validated_data):
+        user = User.objects.create_user(
+            username=validated_data["document_number"],
+            email=validated_data["email"],
+            password=validated_data["password"],
+            role=Role.EMPLOYEE,
+            first_name=validated_data["first_name"],
+            last_name=validated_data["last_name"],
+        )
+        citizen = Citizen.objects.create(
+            user=user,
+            document_type=validated_data["document_type"],
+            document_number=validated_data["document_number"],
+        )
+        employee = Employee.objects.create(
+            citizen=citizen,
+            position=validated_data["position"],
+            area=validated_data["area"],
+        )
+        return employee
+
+    def to_representation(self, instance):
+        return EmployeeSerializer(instance, context=self.context).data
+
+
+class EmployeeUpdateSerializer(serializers.Serializer):
+    position = serializers.ChoiceField(choices=[("GERENTE", "Gerente"), ("INSPECTOR", "Inspector"), ("FUNCIONARIO", "Funcionario")])
+    area = serializers.ChoiceField(choices=[("FISCALIZACION", "Fiscalización"), ("TRIBUTACION", "Tributación"), ("DESARROLLO_URBANO", "Desarrollo Urbano"), ("LICENCIAS", "Licencias"), ("ADMINISTRACION", "Administración"), ("OTRO", "Otro")])
+
+    def update(self, instance, validated_data):
+        instance.position = validated_data["position"]
+        instance.area = validated_data["area"]
+        instance.save(update_fields=["position", "area"])
+        return instance
+
+    def to_representation(self, instance):
+        return EmployeeSerializer(instance, context=self.context).data
 
 
 class UserSerializer(serializers.ModelSerializer):

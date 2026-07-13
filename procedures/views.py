@@ -19,7 +19,7 @@ from procedures.serializers import (
 )
 
 
-class RequirementViewSet(viewsets.ReadOnlyModelViewSet):
+class RequirementViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = RequirementSerializer
 
@@ -102,6 +102,27 @@ class CaseFileViewSet(viewsets.ModelViewSet):
         ).exclude(status=CaseFileStatus.PENDING_REVIEW).exclude(status=CaseFileStatus.DRAFT)
         serializer = CaseFileListSerializer(qs, many=True)
         return Response(serializer.data)
+
+    @action(detail=False, methods=["get"], url_path="dashboard")
+    def dashboard(self, request):
+        from django.db.models import Count
+
+        total = CaseFile.objects.count()
+        by_status = dict(
+            CaseFile.objects.values_list('status')
+            .annotate(count=Count('id'))
+            .values_list('status', 'count')
+        )
+        by_procedure_type = dict(
+            CaseFile.objects.values_list('procedure_type')
+            .annotate(count=Count('id'))
+            .values_list('procedure_type', 'count')
+        )
+        return Response({
+            "total": total,
+            "by_status": by_status,
+            "by_procedure_type": by_procedure_type,
+        })
 
     @action(detail=True, methods=["post"], url_path="approve-documents")
     def approve_documents(self, request, pk=None):
