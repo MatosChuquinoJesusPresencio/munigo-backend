@@ -46,6 +46,9 @@ class ProcedureRequirementSerializer(serializers.ModelSerializer):
 class CaseFileListSerializer(serializers.ModelSerializer):
     establishment_name = serializers.CharField(source='establishment.name', read_only=True)
     company_name = serializers.CharField(source='establishment.company.business_name', read_only=True)
+    inspection_date = serializers.SerializerMethodField()
+    inspection_start_time = serializers.SerializerMethodField()
+    inspection_end_time = serializers.SerializerMethodField()
 
     class Meta:
         model = CaseFile
@@ -53,13 +56,29 @@ class CaseFileListSerializer(serializers.ModelSerializer):
             "id", "tracking_code", "created_at",
             "citizen", "establishment", "establishment_name", "company_name",
             "procedure_type", "risk_level", "status",
+            "inspection_date", "inspection_start_time", "inspection_end_time",
         ]
+
+    def get_inspection_date(self, obj):
+        appt = obj.appointments.first()
+        return appt.scheduled_date if appt else None
+
+    def get_inspection_start_time(self, obj):
+        appt = obj.appointments.first()
+        return appt.start_time if appt else None
+
+    def get_inspection_end_time(self, obj):
+        appt = obj.appointments.first()
+        return appt.end_time if appt else None
 
 
 class CaseFileDetailSerializer(serializers.ModelSerializer):
     establishment_name = serializers.CharField(source='establishment.name', read_only=True)
     company_name = serializers.CharField(source='establishment.company.business_name', read_only=True)
     procedure_requirements = ProcedureRequirementSerializer(many=True, read_only=True)
+    inspection_date = serializers.SerializerMethodField()
+    inspection_start_time = serializers.SerializerMethodField()
+    inspection_end_time = serializers.SerializerMethodField()
 
     class Meta:
         model = CaseFile
@@ -67,8 +86,21 @@ class CaseFileDetailSerializer(serializers.ModelSerializer):
             "id", "tracking_code", "created_at",
             "citizen", "establishment", "establishment_name", "company_name",
             "procedure_type", "risk_level", "status", "procedure_requirements",
+            "inspection_date", "inspection_start_time", "inspection_end_time",
         ]
         read_only_fields = ["tracking_code", "created_at", "risk_level", "status", "citizen"]
+
+    def get_inspection_date(self, obj):
+        appt = obj.appointments.first()
+        return appt.scheduled_date if appt else None
+
+    def get_inspection_start_time(self, obj):
+        appt = obj.appointments.first()
+        return appt.start_time if appt else None
+
+    def get_inspection_end_time(self, obj):
+        appt = obj.appointments.first()
+        return appt.end_time if appt else None
 
     def validate_establishment(self, value):
         from organizations.models import Establishment

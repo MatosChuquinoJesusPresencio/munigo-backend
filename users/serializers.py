@@ -26,11 +26,16 @@ class EmployeeSerializer(serializers.ModelSerializer):
 
 class UserSerializer(serializers.ModelSerializer):
     citizen = CitizenSerializer(read_only=True)
-    employee = EmployeeSerializer(read_only=True)
+    employee = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = ["id", "username", "email", "role", "citizen", "employee"]
+
+    def get_employee(self, obj):
+        if hasattr(obj, 'citizen') and hasattr(obj.citizen, 'employee'):
+            return EmployeeSerializer(obj.citizen.employee).data
+        return None
 
 
 class RegisterSerializer(serializers.Serializer):

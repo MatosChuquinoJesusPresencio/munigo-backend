@@ -243,6 +243,130 @@ class CaseFileViewSet(viewsets.ModelViewSet):
             traceback.print_exc()
             raise
 
+    @action(detail=False, methods=["get"], url_path="my-inspections")
+    def my_inspections(self, request):
+        try:
+            employee = request.user.citizen.employee
+        except AttributeError:
+            return Response(
+                {"detail": "El usuario no es un empleado."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        appointments = Appointment.objects.filter(
+            inspector=employee,
+            case_file__status=CaseFileStatus.PENDING_INSPECTION,
+        ).select_related('case_file', 'case_file__establishment', 'case_file__establishment__company')
+
+        case_file_ids = appointments.values_list('case_file_id', flat=True).distinct()
+        qs = CaseFile.objects.filter(id__in=case_file_ids).select_related(
+            'establishment', 'establishment__company', 'citizen__user'
+        )
+        serializer = CaseFileListSerializer(qs, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["get"], url_path="inspection-history")
+    def inspection_history(self, request):
+        try:
+            employee = request.user.citizen.employee
+        except AttributeError:
+            return Response(
+                {"detail": "El usuario no es un empleado."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        finished_statuses = [
+            CaseFileStatus.APPROVED,
+            CaseFileStatus.OBSERVED,
+            CaseFileStatus.REJECTED,
+        ]
+        appointments = Appointment.objects.filter(
+            inspector=employee,
+            case_file__status__in=finished_statuses,
+        ).select_related('case_file')
+
+        case_file_ids = appointments.values_list('case_file_id', flat=True).distinct()
+        qs = CaseFile.objects.filter(id__in=case_file_ids).select_related(
+            'establishment', 'establishment__company', 'citizen__user'
+        )
+        serializer = CaseFileListSerializer(qs, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["post"], url_path="complete-inspection")
+    def complete_inspection(self, request, pk=None):
+        case_file = self.get_object()
+
+        if case_file.status != CaseFileStatus.PENDING_INSPECTION:
+            return Response(
+                {"detail": "Solo se pueden completar inspecciones pendientes."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            employee = request.user.citizen.employee
+        except AttributeError:
+            return Response(
+                {"detail": "El usuario no es un empleado."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        appointment = Appointment.objects.filter(
+            case_file=case_file,
+            inspector=employee,
+        ).first()
+
+        if not appointment:
+            return Response(
+                {"detail": "No tienes una inspección asignada para este expediente."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if hasattr(appointment, 'inspection'):
+            return Response(
+                {"detail": "Esta inspección ya fue completada."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        from inspections.models import Inspection, InspectionResult
+        result = request.data.get("result")
+        if result not in dict(InspectionResult.choices):
+            return Response(
+                {"detail": "El resultado debe ser APROBADO o NO_APROBADO."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        comments = request.data.get("comments", "")
+        photo_urls = request.data.get("photo_urls", [])
+
+        Inspection.objects.create(
+            appointment=appointment,
+            result=result,
+            comments=comments,
+            photo_urls=photo_urls,
+        )
+
+        appointment.status = "COMPLETADA"
+        appointment.save(update_fields=["status"])
+
+        if result == InspectionResult.APPROVED:
+            case_file.status = CaseFileStatus.APPROVED
+            status_label = "aprobado"
+        else:
+            case_file.status = CaseFileStatus.REJECTED
+            status_label = "rechazado"
+
+        case_file.save(update_fields=["status"])
+
+        from notifications.models import Notification
+        Notification.objects.create(
+            citizen=case_file.citizen,
+            case_file=case_file,
+            title="Inspección completada",
+            message=f"La inspección de tu trámite {case_file.tracking_code} fue {status_label}.",
+        )
+
+        return Response({"detail": f"Inspección completada. Trámite {status_label}."})
+
 
 class ProcedureRequirementViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
