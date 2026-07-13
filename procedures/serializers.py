@@ -97,14 +97,31 @@ class CaseFileDetailSerializer(serializers.ModelSerializer):
 
 class AppointmentSerializer(serializers.ModelSerializer):
     created_by = serializers.HiddenField(default=None)
+    case_file_tracking = serializers.CharField(source='case_file.tracking_code', read_only=True)
+    case_file_procedure_type = serializers.SerializerMethodField()
+    establishment_name = serializers.SerializerMethodField()
+    inspector_name = serializers.SerializerMethodField()
 
     class Meta:
         model = Appointment
         fields = [
-            "id", "case_file", "created_by", "inspector",
+            "id", "case_file", "case_file_tracking", "case_file_procedure_type",
+            "establishment_name", "created_by", "inspector", "inspector_name",
             "scheduled_date", "start_time", "end_time", "status",
         ]
         read_only_fields = ["status"]
+
+    def get_case_file_procedure_type(self, obj):
+        return obj.case_file.get_procedure_type_display()
+
+    def get_establishment_name(self, obj):
+        return obj.case_file.establishment.name if obj.case_file.establishment else None
+
+    def get_inspector_name(self, obj):
+        if obj.inspector and hasattr(obj.inspector, 'citizen'):
+            user = obj.inspector.citizen.user
+            return f"{user.first_name} {user.last_name}".strip()
+        return None
 
     def validate_created_by(self, value):
         user = self.context["request"].user

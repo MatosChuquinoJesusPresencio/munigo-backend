@@ -301,4 +301,4 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     serializer_class = AppointmentSerializer
 
     def get_queryset(self):
-        return Appointment.objects.select_related('case_file', 'inspector__citizen__user').filter(case_file__citizen__user=self.request.user)
+        return Appointment.objects.select_related('case_file', 'case_file__establishment', 'inspector__citizen__user').filter(case_file__citizen__user=self.request.user)
