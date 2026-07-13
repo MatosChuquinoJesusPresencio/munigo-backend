@@ -10,6 +10,7 @@ API REST para el sistema de gestión de trámites y citas municipales del Area d
 - **SimpleJWT** 5.5.1 (autenticación JWT)
 - **PostgreSQL** (Supabase) via psycopg2
 - **Gunicorn** (servidor WSGI en producción)
+- **ReportLab** (generación de PDFs de licencias)
 
 ## Estructura del proyecto
 
@@ -19,12 +20,14 @@ munigo-backend/
 ├── users/                  # Autenticación, usuarios, empleados
 ├── organizations/          # Empresas, establecimientos, categorías
 ├── procedures/             # Expedientes, requisitos, documentos, citas
+│   └── pdf_generator.py    # Generación de PDF de licencias de funcionamiento
 ├── notifications/          # Notificaciones a ciudadanos
 ├── inspections/            # Inspecciones de campo
+├── db/
+│   └── seed.sql            # Datos iniciales (usuarios, empresas, requisitos)
 ├── manage.py
 ├── requirements.txt
-├── Dockerfile
-└── seed.sql                # Datos iniciales (roles, áreas, requisitos)
+└── Dockerfile
 ```
 
 ### Apps de Django
@@ -102,7 +105,7 @@ Content-Type: application/json
 
 | Rol | Carga | Permisos |
 |-----|-------|----------|
-| **Ciudadano** | Registra empresa, crea expedientes, sube documentos, confirma/cancela/reprograma citas |
+| **Ciudadano** | Registra empresa, crea expedientes, sube documentos, confirma/cancela/reprograma citas, descarga licencia aprobada |
 | **Funcionario** | Revisa documentos, asigna inspectores, agenda citas, ve dashboard |
 | **Inspector** | Realiza inspecciones de campo, ve sus inspecciones y calendario |
 | **Gerente** | Todo lo del Funcionario + gestiona empleados (CRUD) y requisitos |
@@ -157,6 +160,7 @@ Content-Type: application/json
 | GET | `/api/procedures/case-files/my-inspections/` | Mis inspecciones asignadas | Inspector |
 | GET | `/api/procedures/case-files/inspection-history/` | Historial de inspecciones | Inspector |
 | POST | `/api/procedures/case-files/{id}/complete-inspection/` | Completar inspección | Inspector |
+| GET | `/api/procedures/case-files/{id}/download-license/` | Descargar licencia PDF (solo APROBADO) | Autenticado |
 
 ### Requisitos (`/api/procedures/requirements/`)
 

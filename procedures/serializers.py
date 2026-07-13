@@ -100,6 +100,13 @@ class CaseFileListSerializer(serializers.ModelSerializer):
 class CaseFileDetailSerializer(TrimMixin, serializers.ModelSerializer):
     establishment_name = serializers.CharField(source='establishment.name', read_only=True)
     company_name = serializers.CharField(source='establishment.company.business_name', read_only=True)
+    company_ruc = serializers.CharField(source='establishment.company.ruc', read_only=True)
+    establishment_address = serializers.CharField(source='establishment.address', read_only=True)
+    business_category = serializers.CharField(source='establishment.business_category', read_only=True)
+    square_meters = serializers.IntegerField(source='establishment.square_meters', read_only=True)
+    citizen_name = serializers.SerializerMethodField()
+    citizen_document_type = serializers.CharField(source='citizen.document_type', read_only=True)
+    citizen_document_number = serializers.CharField(source='citizen.document_number', read_only=True)
     procedure_requirements = ProcedureRequirementSerializer(many=True, read_only=True)
     inspection_date = serializers.SerializerMethodField()
     inspection_start_time = serializers.SerializerMethodField()
@@ -109,11 +116,16 @@ class CaseFileDetailSerializer(TrimMixin, serializers.ModelSerializer):
         model = CaseFile
         fields = [
             "id", "tracking_code", "created_at",
-            "citizen", "establishment", "establishment_name", "company_name",
+            "citizen", "citizen_name", "citizen_document_type", "citizen_document_number",
+            "establishment", "establishment_name", "establishment_address",
+            "company_name", "company_ruc", "business_category", "square_meters",
             "procedure_type", "risk_level", "status", "procedure_requirements",
             "inspection_date", "inspection_start_time", "inspection_end_time",
         ]
         read_only_fields = ["tracking_code", "created_at", "risk_level", "status", "citizen"]
+
+    def get_citizen_name(self, obj):
+        return f"{obj.citizen.user.first_name} {obj.citizen.user.last_name}".strip()
 
     def _get_first_appointment(self, obj):
         if not hasattr(obj, '_cached_appointment'):

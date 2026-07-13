@@ -237,6 +237,31 @@ class CaseFileViewSet(viewsets.ModelViewSet):
 
         return Response(CaseFileDetailSerializer(case_file).data)
 
+    @action(detail=True, methods=["get"], url_path="download-license")
+    def download_license(self, request, pk=None):
+        case_file = self.get_object()
+
+        if case_file.status != CaseFileStatus.APPROVED:
+            return Response(
+                {"detail": "Solo se puede descargar la licencia de expedientes aprobados."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if case_file.procedure_type != "LICENCIA_DE_FUNCIONAMIENTO":
+            return Response(
+                {"detail": "La licencia solo esta disponible para Licencias de Funcionamiento."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        from procedures.pdf_generator import generate_license_pdf
+        pdf_bytes = generate_license_pdf(case_file)
+
+        from django.http import HttpResponse
+        response = HttpResponse(pdf_bytes, content_type="application/pdf")
+        filename = f"licencia_{case_file.tracking_code}.pdf"
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
+
     @action(detail=True, methods=["post"], url_path="set-status")
     def set_status(self, request, pk=None):
         if not _is_employee(request.user):
