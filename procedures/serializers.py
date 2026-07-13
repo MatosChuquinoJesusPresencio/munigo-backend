@@ -179,8 +179,9 @@ class AppointmentSerializer(TrimMixin, serializers.ModelSerializer):
             "id", "case_file", "case_file_tracking", "case_file_procedure_type",
             "establishment_name", "created_by", "inspector", "inspector_name",
             "scheduled_date", "start_time", "end_time", "status",
+            "notes", "cancel_reason", "created_at",
         ]
-        read_only_fields = ["status"]
+        read_only_fields = ["status", "cancel_reason", "created_at"]
 
     def get_case_file_procedure_type(self, obj):
         return obj.case_file.get_procedure_type_display()
@@ -234,7 +235,12 @@ class AppointmentSerializer(TrimMixin, serializers.ModelSerializer):
             conflict = Appointment.objects.filter(
                 inspector=inspector,
                 scheduled_date=scheduled_date,
-                status__in=[AppointmentStatus.PROGRAMADA, AppointmentStatus.CONFIRMADA],
+                status__in=[
+                    AppointmentStatus.PENDING_CONFIRMATION,
+                    AppointmentStatus.SCHEDULED,
+                    AppointmentStatus.CONFIRMED,
+                    AppointmentStatus.PENDING_RESCHEDULE,
+                ],
             ).exclude(pk=getattr(self.instance, 'pk', None)).filter(
                 start_time__lt=end_time,
                 end_time__gt=start_time,
@@ -268,6 +274,7 @@ class AssignInspectorSerializer(TrimMixin, serializers.Serializer):
     scheduled_date = serializers.DateField()
     start_time = serializers.TimeField()
     end_time = serializers.TimeField()
+    notes = serializers.CharField(required=False, allow_blank=True, default="")
 
     def validate_inspector_id(self, value):
         from users.models import Employee

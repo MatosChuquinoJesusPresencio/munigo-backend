@@ -6,6 +6,7 @@ from procedures.models import (
     CaseFile, CaseFileStatus, Requirement, Appointment, AppointmentStatus,
     ProcedureRequirement, AttachedDocument, ValidationStatus,
 )
+from users.models import Position
 from procedures.serializers import (
     CaseFileListSerializer,
     CaseFileDetailSerializer,
@@ -210,9 +211,9 @@ class CaseFileViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        if employee.position != Position.INSPECTOR:
+        if employee.position not in (Position.OFFICIAL, Position.MANAGER):
             return Response(
-                {"detail": "Solo un inspector puede completar inspecciones."},
+                {"detail": "Solo un funcionario o gerente puede asignar inspectores."},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
@@ -223,17 +224,15 @@ class CaseFileViewSet(viewsets.ModelViewSet):
             scheduled_date=data["scheduled_date"],
             start_time=data["start_time"],
             end_time=data["end_time"],
+            notes=data.get("notes", ""),
         )
-
-        case_file.status = CaseFileStatus.PENDING_INSPECTION
-        case_file.save(update_fields=["status"])
 
         from notifications.models import Notification
         Notification.objects.create(
             citizen=case_file.citizen,
             case_file=case_file,
-            title="Inspección programada",
-            message=f"Se programó una inspección para tu trámite {case_file.tracking_code}.",
+            title="Cita pendiente de confirmación",
+            message=f"Se programó una inspección para tu trámite {case_file.tracking_code}. Confirma o rechaza la cita desde 'Mis Citas'.",
         )
 
         return Response(CaseFileDetailSerializer(case_file).data)
@@ -313,6 +312,7 @@ class CaseFileViewSet(viewsets.ModelViewSet):
         appointments = Appointment.objects.filter(
             inspector=employee,
             case_file__status=CaseFileStatus.PENDING_INSPECTION,
+            status=AppointmentStatus.CONFIRMED,
         ).select_related('case_file', 'case_file__establishment', 'case_file__establishment__company')
 
         case_file_ids = appointments.values_list('case_file_id', flat=True).distinct()
@@ -381,6 +381,12 @@ class CaseFileViewSet(viewsets.ModelViewSet):
         if hasattr(appointment, 'inspection'):
             return Response(
                 {"detail": "Esta inspección ya fue completada."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if appointment.status != AppointmentStatus.CONFIRMED:
+            return Response(
+                {"detail": "La cita debe estar confirmada antes de completar la inspección."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -482,4 +488,313 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     serializer_class = AppointmentSerializer
 
     def get_queryset(self):
-        return Appointment.objects.select_related('case_file', 'case_file__establishment', 'inspector__citizen__user').filter(case_file__citizen__user=self.request.user)
+        user = self.request.user
+        if _is_employee(user):
+            return Appointment.objects.select_related(
+                'case_file', 'case_file__establishment',
+                'case_file__citizen__user',
+                'inspector__citizen__user',
+                'created_by__citizen__user',
+            ).all()
+        return Appointment.objects.select_related(
+            'case_file', 'case_file__establishment',
+            'inspector__citizen__user',
+        ).filter(case_file__citizen__user=user)
+
+    def get_serializer_context(self):
+        ctx = super().get_serializer_context()
+        ctx["request"] = self.request
+        return ctx
+
+    @action(detail=True, methods=["post"], url_path="confirm")
+    def confirm(self, request, pk=None):
+        appointment = self.get_object()
+        user = request.user
+
+        if not hasattr(user, 'citizen'):
+            return Response(
+                {"detail": "Solo el ciudadano puede confirmar la cita."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if appointment.case_file.citizen.user != user:
+            return Response(
+                {"detail": "Esta cita no te pertenece."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if appointment.status != AppointmentStatus.PENDING_CONFIRMATION:
+            return Response(
+                {"detail": "Solo se pueden confirmar citas pendientes de confirmación."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        appointment.status = AppointmentStatus.CONFIRMED
+        appointment.save(update_fields=["status"])
+
+        case_file = appointment.case_file
+        case_file.status = CaseFileStatus.PENDING_INSPECTION
+        case_file.save(update_fields=["status"])
+
+        from notifications.models import Notification
+        Notification.objects.create(
+            citizen=case_file.citizen,
+            case_file=case_file,
+            title="Cita confirmada",
+            message=f"La inspección para tu trámite {case_file.tracking_code} ha sido confirmada.",
+        )
+
+        return Response(AppointmentSerializer(appointment).data)
+
+    @action(detail=True, methods=["post"], url_path="cancel")
+    def cancel(self, request, pk=None):
+        appointment = self.get_object()
+        user = request.user
+        reason = request.data.get("reason", "").strip()
+
+        if not reason:
+            return Response(
+                {"detail": "El motivo de cancelación es obligatorio."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        is_citizen = hasattr(user, 'citizen') and appointment.case_file.citizen.user == user
+        is_employee = _is_employee(user)
+
+        if not is_citizen and not is_employee:
+            return Response(
+                {"detail": "No autorizado para cancelar esta cita."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if appointment.status not in (
+            AppointmentStatus.PENDING_CONFIRMATION,
+            AppointmentStatus.CONFIRMED,
+            AppointmentStatus.PENDING_RESCHEDULE,
+        ):
+            return Response(
+                {"detail": "No se puede cancelar una cita en este estado."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        appointment.status = AppointmentStatus.CANCELLED
+        appointment.cancel_reason = reason
+        appointment.save(update_fields=["status", "cancel_reason"])
+
+        case_file = appointment.case_file
+        case_file.status = CaseFileStatus.DOCUMENTS_APPROVED
+        case_file.save(update_fields=["status"])
+
+        from notifications.models import Notification
+        if is_citizen:
+            notify_to = case_file.citizen
+            title = "Cita cancelada por el ciudadano"
+            msg = f"El ciudadano canceló la cita del trámite {case_file.tracking_code}. Motivo: {reason}"
+        else:
+            notify_to = case_file.citizen
+            title = "Cita cancelada"
+            msg = f"La cita del trámite {case_file.tracking_code} fue cancelada. Motivo: {reason}"
+
+        Notification.objects.create(
+            citizen=notify_to,
+            case_file=case_file,
+            title=title,
+            message=msg,
+        )
+
+        return Response(AppointmentSerializer(appointment).data)
+
+    @action(detail=True, methods=["post"], url_path="reschedule")
+    def reschedule(self, request, pk=None):
+        appointment = self.get_object()
+        user = request.user
+
+        if not hasattr(user, 'citizen') or appointment.case_file.citizen.user != user:
+            return Response(
+                {"detail": "Solo el ciudadano puede solicitar reprogramación."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if appointment.status != AppointmentStatus.CONFIRMED:
+            return Response(
+                {"detail": "Solo se pueden reprogramar citas confirmadas."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        new_date = request.data.get("new_date")
+        new_start = request.data.get("new_start_time")
+        new_end = request.data.get("new_end_time")
+        reason = request.data.get("reason", "").strip()
+
+        if not all([new_date, new_start, new_end, reason]):
+            return Response(
+                {"detail": "Fecha, horas y motivo son obligatorios."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        appointment.status = AppointmentStatus.PENDING_RESCHEDULE
+        appointment.notes = (
+            f"Reprogramación solicitada: {new_date} {new_start}-{new_end}. Motivo: {reason}"
+        )
+        appointment.save(update_fields=["status", "notes"])
+
+        from notifications.models import Notification
+        Notification.objects.create(
+            citizen=appointment.case_file.citizen,
+            case_file=appointment.case_file,
+            title="Solicitud de reprogramación",
+            message=f"El ciudadano solicitó reprogramar la cita del trámite {appointment.case_file.tracking_code}.",
+        )
+
+        return Response(AppointmentSerializer(appointment).data)
+
+    @action(detail=True, methods=["post"], url_path="respond-reschedule")
+    def respond_reschedule(self, request, pk=None):
+        appointment = self.get_object()
+
+        if not _is_employee(request.user):
+            return Response(
+                {"detail": "Solo un empleado puede responder reprogramaciones."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if appointment.status != AppointmentStatus.PENDING_RESCHEDULE:
+            return Response(
+                {"detail": "Esta cita no tiene una solicitud de reprogramación pendiente."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        accept = request.data.get("accept", False)
+
+        if accept:
+            new_date = request.data.get("new_date")
+            new_start = request.data.get("new_start_time")
+            new_end = request.data.get("new_end_time")
+
+            if not all([new_date, new_start, new_end]):
+                return Response(
+                    {"detail": "Fecha y horas son obligatorias al aceptar."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            conflict = Appointment.objects.filter(
+                inspector=appointment.inspector,
+                scheduled_date=new_date,
+                status__in=[
+                    AppointmentStatus.PENDING_CONFIRMATION,
+                    AppointmentStatus.SCHEDULED,
+                    AppointmentStatus.CONFIRMED,
+                    AppointmentStatus.PENDING_RESCHEDULE,
+                ],
+            ).exclude(pk=appointment.pk).filter(
+                start_time__lt=new_end,
+                end_time__gt=new_start,
+            ).exists()
+
+            if conflict:
+                return Response(
+                    {"detail": "El inspector ya tiene una cita en ese horario."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            appointment.scheduled_date = new_date
+            appointment.start_time = new_start
+            appointment.end_time = new_end
+            appointment.status = AppointmentStatus.CONFIRMED
+            appointment.notes = ""
+            appointment.save(update_fields=["scheduled_date", "start_time", "end_time", "status", "notes"])
+
+            msg = f"Tu solicitud de reprogramación fue aceptada. Nueva fecha: {new_date} {new_start}-{new_end}."
+        else:
+            appointment.status = AppointmentStatus.CANCELLED
+            appointment.cancel_reason = "Reprogramación rechazada por el empleado"
+            appointment.save(update_fields=["status", "cancel_reason"])
+
+            case_file = appointment.case_file
+            case_file.status = CaseFileStatus.DOCUMENTS_APPROVED
+            case_file.save(update_fields=["status"])
+
+            msg = f"Tu solicitud de reprogramación fue rechazada. La cita del trámite {appointment.case_file.tracking_code} ha sido cancelada."
+
+        from notifications.models import Notification
+        Notification.objects.create(
+            citizen=appointment.case_file.citizen,
+            case_file=appointment.case_file,
+            title="Respuesta a reprogramación",
+            message=msg,
+        )
+
+        return Response(AppointmentSerializer(appointment).data)
+
+    @action(detail=False, methods=["get"], url_path="available-slots")
+    def available_slots(self, request):
+        inspector_id = request.query_params.get("inspector_id")
+        date_str = request.query_params.get("date")
+
+        if not inspector_id or not date_str:
+            return Response(
+                {"detail": "inspector_id y date son requeridos."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        from datetime import date as date_type
+        from django.utils.dateparse import parse_date
+
+        try:
+            target_date = parse_date(date_str)
+        except (ValueError, TypeError):
+            return Response(
+                {"detail": "Formato de fecha inválido (YYYY-MM-DD)."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        booked = Appointment.objects.filter(
+            inspector_id=inspector_id,
+            scheduled_date=target_date,
+            status__in=[
+                AppointmentStatus.PENDING_CONFIRMATION,
+                AppointmentStatus.SCHEDULED,
+                AppointmentStatus.CONFIRMED,
+                AppointmentStatus.PENDING_RESCHEDULE,
+            ],
+        ).values_list("start_time", "end_time")
+
+        return Response({
+            "date": date_str,
+            "inspector_id": inspector_id,
+            "booked_slots": [
+                {"start": str(s), "end": str(e)} for s, e in booked
+            ],
+        })
+
+    @action(detail=False, methods=["get"], url_path="calendar")
+    def calendar(self, request):
+        if not _is_employee(request.user):
+            return Response(
+                {"detail": "No autorizado."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        from django.utils.dateparse import parse_date
+        start_str = request.query_params.get("start")
+        end_str = request.query_params.get("end")
+        inspector_id = request.query_params.get("inspector_id")
+
+        qs = self.get_queryset().filter(
+            status__in=[
+                AppointmentStatus.PENDING_CONFIRMATION,
+                AppointmentStatus.SCHEDULED,
+                AppointmentStatus.CONFIRMED,
+                AppointmentStatus.PENDING_RESCHEDULE,
+            ],
+        )
+
+        if start_str:
+            qs = qs.filter(scheduled_date__gte=parse_date(start_str))
+        if end_str:
+            qs = qs.filter(scheduled_date__lte=parse_date(end_str))
+        if inspector_id:
+            qs = qs.filter(inspector_id=inspector_id)
+
+        serializer = AppointmentSerializer(qs, many=True)
+        return Response(serializer.data)

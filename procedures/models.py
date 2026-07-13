@@ -36,7 +36,10 @@ class ValidationStatus(models.TextChoices):
 
 
 class AppointmentStatus(models.TextChoices):
+    PENDING_CONFIRMATION = "PENDIENTE_CONFIRMACION", "Pendiente de confirmación"
     SCHEDULED = "PROGRAMADA", "Programada"
+    CONFIRMED = "CONFIRMADA", "Confirmada"
+    PENDING_RESCHEDULE = "PENDIENTE_REPROGRAMACION", "Pendiente de reprogramación"
     COMPLETED = "COMPLETADA", "Completada"
     CANCELLED = "CANCELADA", "Cancelada"
 
@@ -173,11 +176,14 @@ class Appointment(models.Model):
     start_time = models.TimeField()
     end_time = models.TimeField()
     status = models.CharField(
-        max_length=20,
+        max_length=30,
         choices=AppointmentStatus.choices,
-        default=AppointmentStatus.SCHEDULED,
+        default=AppointmentStatus.PENDING_CONFIRMATION,
         db_index=True,
     )
+    notes = models.TextField(blank=True)
+    cancel_reason = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         verbose_name = "Cita"
