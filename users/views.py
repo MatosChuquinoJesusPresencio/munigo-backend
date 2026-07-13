@@ -1,7 +1,7 @@
 from rest_framework import generics, viewsets, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated, BasePermission
 from rest_framework_simplejwt.views import TokenViewBase
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -10,6 +10,27 @@ from users.serializers import (
     RegisterSerializer, LoginSerializer, UserSerializer,
     EmployeeSerializer, EmployeeCreateSerializer, EmployeeUpdateSerializer,
 )
+
+
+class IsGerente(BasePermission):
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        try:
+            return request.user.citizen.employee.position == "GERENTE"
+        except AttributeError:
+            return False
+
+
+class IsEmployee(BasePermission):
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        try:
+            request.user.citizen.employee
+            return True
+        except AttributeError:
+            return False
 
 
 class RegisterView(generics.CreateAPIView):
@@ -56,7 +77,7 @@ class MeView(generics.RetrieveAPIView):
 
 class EmployeeViewSet(viewsets.ModelViewSet):
     serializer_class = EmployeeSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsGerente]
 
     def get_queryset(self):
         qs = Employee.objects.select_related("citizen__user")

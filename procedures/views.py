@@ -3,7 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from procedures.models import (
-    CaseFile, CaseFileStatus, Requirement, Appointment,
+    CaseFile, CaseFileStatus, Requirement, Appointment, AppointmentStatus,
     ProcedureRequirement, AttachedDocument, ValidationStatus,
 )
 from procedures.serializers import (
@@ -17,6 +17,14 @@ from procedures.serializers import (
     AssignInspectorSerializer,
     CaseFileSetStatusSerializer,
 )
+
+
+def _is_employee(user):
+    try:
+        user.citizen.employee
+        return True
+    except AttributeError:
+        return False
 
 
 class RequirementViewSet(viewsets.ModelViewSet):
@@ -44,10 +52,10 @@ class CaseFileViewSet(viewsets.ModelViewSet):
         if hasattr(user, 'citizen') and hasattr(user.citizen, 'employee'):
             return CaseFile.objects.select_related(
                 'establishment', 'establishment__company', 'citizen__user'
-            ).all()
+            ).prefetch_related('appointments').all()
         return CaseFile.objects.select_related(
             'establishment', 'establishment__company'
-        ).filter(citizen__user=user)
+        ).prefetch_related('appointments').filter(citizen__user=user)
 
     def perform_create(self, serializer):
         serializer.save(citizen=self.request.user.citizen)
@@ -89,6 +97,8 @@ class CaseFileViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"], url_path="pending-review")
     def pending_review(self, request):
+        if not _is_employee(request.user):
+            return Response({"detail": "No autorizado."}, status=status.HTTP_403_FORBIDDEN)
         qs = CaseFile.objects.select_related(
             "establishment", "establishment__company", "citizen__user"
         ).filter(status=CaseFileStatus.PENDING_REVIEW)
@@ -97,6 +107,8 @@ class CaseFileViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"], url_path="history")
     def history(self, request):
+        if not _is_employee(request.user):
+            return Response({"detail": "No autorizado."}, status=status.HTTP_403_FORBIDDEN)
         qs = CaseFile.objects.select_related(
             "establishment", "establishment__company", "citizen__user"
         ).exclude(status=CaseFileStatus.PENDING_REVIEW).exclude(status=CaseFileStatus.DRAFT)
@@ -104,6 +116,9 @@ class CaseFileViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     @action(detail=False, methods=["get"], url_path="dashboard")
+    def dashboard(self, request):
+        if not _is_employee(request.user):
+            return Response({"detail": "No autorizado."}, status=status.HTTP_403_FORBIDDEN)
     def dashboard(self, request):
         from django.db.models import Count
 
@@ -126,6 +141,8 @@ class CaseFileViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"], url_path="approve-documents")
     def approve_documents(self, request, pk=None):
+        if not _is_employee(request.user):
+            return Response({"detail": "No autorizado."}, status=status.HTTP_403_FORBIDDEN)
         case_file = self.get_object()
 
         if case_file.status != CaseFileStatus.PENDING_REVIEW:
@@ -211,6 +228,8 @@ class CaseFileViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"], url_path="set-status")
     def set_status(self, request, pk=None):
+        if not _is_employee(request.user):
+            return Response({"detail": "No autorizado."}, status=status.HTTP_403_FORBIDDEN)
         try:
             case_file = self.get_object()
 
@@ -366,7 +385,7 @@ class CaseFileViewSet(viewsets.ModelViewSet):
             photo_urls=photo_urls,
         )
 
-        appointment.status = "COMPLETADA"
+        appointment.status = AppointmentStatus.COMPLETED
         appointment.save(update_fields=["status"])
 
         if result == InspectionResult.APPROVED:

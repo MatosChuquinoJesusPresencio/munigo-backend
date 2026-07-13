@@ -4,6 +4,7 @@ from procedures.models import (
     CaseFile, CaseFileStatus, Requirement, AllowedFormat, ValidationStatus,
     Appointment, ProcedureRequirement, AttachedDocument,
 )
+from users.models import Position
 
 
 class RequirementSerializer(serializers.ModelSerializer):
@@ -59,16 +60,21 @@ class CaseFileListSerializer(serializers.ModelSerializer):
             "inspection_date", "inspection_start_time", "inspection_end_time",
         ]
 
+    def _get_first_appointment(self, obj):
+        if not hasattr(obj, '_cached_appointment'):
+            obj._cached_appointment = obj.appointments.first()
+        return obj._cached_appointment
+
     def get_inspection_date(self, obj):
-        appt = obj.appointments.first()
+        appt = self._get_first_appointment(obj)
         return appt.scheduled_date if appt else None
 
     def get_inspection_start_time(self, obj):
-        appt = obj.appointments.first()
+        appt = self._get_first_appointment(obj)
         return appt.start_time if appt else None
 
     def get_inspection_end_time(self, obj):
-        appt = obj.appointments.first()
+        appt = self._get_first_appointment(obj)
         return appt.end_time if appt else None
 
 
@@ -90,16 +96,21 @@ class CaseFileDetailSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["tracking_code", "created_at", "risk_level", "status", "citizen"]
 
+    def _get_first_appointment(self, obj):
+        if not hasattr(obj, '_cached_appointment'):
+            obj._cached_appointment = obj.appointments.first()
+        return obj._cached_appointment
+
     def get_inspection_date(self, obj):
-        appt = obj.appointments.first()
+        appt = self._get_first_appointment(obj)
         return appt.scheduled_date if appt else None
 
     def get_inspection_start_time(self, obj):
-        appt = obj.appointments.first()
+        appt = self._get_first_appointment(obj)
         return appt.start_time if appt else None
 
     def get_inspection_end_time(self, obj):
-        appt = obj.appointments.first()
+        appt = self._get_first_appointment(obj)
         return appt.end_time if appt else None
 
     def validate_establishment(self, value):
@@ -162,14 +173,14 @@ class AppointmentSerializer(serializers.ModelSerializer):
         except AttributeError:
             raise serializers.ValidationError("El usuario no es un empleado.")
 
-        if employee.position not in ("OFFICIAL", "MANAGER"):
+        if employee.position not in (Position.OFFICIAL, Position.MANAGER):
             raise serializers.ValidationError(
                 "Solo un funcionario o gerente puede crear citas."
             )
         return employee
 
     def validate_inspector(self, value):
-        if value is not None and value.position != "INSPECTOR":
+        if value is not None and value.position != Position.INSPECTOR:
             raise serializers.ValidationError(
                 "El inspector debe tener el cargo de Inspector."
             )

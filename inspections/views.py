@@ -2,10 +2,11 @@ from rest_framework import viewsets, permissions
 
 from inspections.models import Inspection
 from inspections.serializers import InspectionSerializer
+from users.views import IsEmployee
 
 
 class InspectionViewSet(viewsets.ModelViewSet):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsEmployee]
     serializer_class = InspectionSerializer
 
     def get_queryset(self):

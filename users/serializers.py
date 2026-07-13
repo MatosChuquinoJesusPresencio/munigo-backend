@@ -2,7 +2,7 @@ from rest_framework import serializers
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 
-from users.models import User, Citizen, Employee, Role, DocumentType
+from users.models import User, Citizen, Employee, Role, DocumentType, Position, Area
 
 
 def generate_username(first_name: str, last_name: str, document_number: str) -> str:
@@ -32,8 +32,8 @@ class EmployeeCreateSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True, min_length=6)
     document_type = serializers.ChoiceField(choices=DocumentType.choices)
     document_number = serializers.CharField(max_length=22)
-    position = serializers.ChoiceField(choices=[("GERENTE", "Gerente"), ("INSPECTOR", "Inspector"), ("FUNCIONARIO", "Funcionario")])
-    area = serializers.ChoiceField(choices=[("FISCALIZACION", "Fiscalización"), ("TRIBUTACION", "Tributación"), ("DESARROLLO_URBANO", "Desarrollo Urbano"), ("LICENCIAS", "Licencias"), ("ADMINISTRACION", "Administración"), ("OTRO", "Otro")])
+    position = serializers.ChoiceField(choices=Position.choices)
+    area = serializers.ChoiceField(choices=Area.choices)
 
     def validate_email(self, value):
         if User.objects.filter(email=value).exists():
@@ -71,8 +71,8 @@ class EmployeeCreateSerializer(serializers.Serializer):
 
 
 class EmployeeUpdateSerializer(serializers.Serializer):
-    position = serializers.ChoiceField(choices=[("GERENTE", "Gerente"), ("INSPECTOR", "Inspector"), ("FUNCIONARIO", "Funcionario")])
-    area = serializers.ChoiceField(choices=[("FISCALIZACION", "Fiscalización"), ("TRIBUTACION", "Tributación"), ("DESARROLLO_URBANO", "Desarrollo Urbano"), ("LICENCIAS", "Licencias"), ("ADMINISTRACION", "Administración"), ("OTRO", "Otro")])
+    position = serializers.ChoiceField(choices=Position.choices)
+    area = serializers.ChoiceField(choices=Area.choices)
 
     def update(self, instance, validated_data):
         instance.position = validated_data["position"]
