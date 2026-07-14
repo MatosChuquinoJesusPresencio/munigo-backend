@@ -2,6 +2,12 @@
 
 API REST para el sistema de gestión de trámites y citas municipales del Area de Desarrollo Económico y la Subgerencia de Comercialización de los Olivos.
 
+## Despliegue
+
+- **URL**: https://munigo-backend-production.up.railway.app/
+- **Plataforma**: Railway
+- **Salud**: `GET /` → `{"status": "ok"}`
+
 ## Stack
 
 - **Python** 3.10
