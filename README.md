@@ -330,7 +330,7 @@ El Dockerfile usa Python 3.10-slim, ejecuta `migrate --noinput` durante el build
 
 El archivo `db/seed.sql` contiene datos iniciales para probar el sistema:
 
-### Usuarios (contraseña: `admin123`)
+### Usuarios (contraseña: `test1234`)
 
 | Username | Nombre | Rol | Posición | Área | DNI |
 |----------|--------|-----|----------|------|-----|
