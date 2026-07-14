@@ -28,6 +28,30 @@ def _is_employee(user):
         return False
 
 
+from datetime import date
+
+
+def _cancel_past_appointments():
+    from django.utils import timezone
+    today = timezone.localdate()
+    past_active = Appointment.objects.filter(
+        scheduled_date__lt=today,
+        status__in=[
+            AppointmentStatus.PENDING_CONFIRMATION,
+            AppointmentStatus.PENDING_RESCHEDULE,
+        ],
+    ).select_related('case_file')
+
+    for appointment in past_active:
+        appointment.status = AppointmentStatus.CANCELLED
+        appointment.cancel_reason = "Cita vencida: la fecha programada ya pasó."
+        appointment.save(update_fields=["status", "cancel_reason"])
+        case_file = appointment.case_file
+        if case_file.status == CaseFileStatus.PENDING_INSPECTION:
+            case_file.status = CaseFileStatus.DOCUMENTS_APPROVED
+            case_file.save(update_fields=["status"])
+
+
 class RequirementViewSet(viewsets.ModelViewSet):
     serializer_class = RequirementSerializer
 
@@ -337,6 +361,8 @@ class CaseFileViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
+        _cancel_past_appointments()
+
         appointments = Appointment.objects.filter(
             inspector=employee,
             status__in=[
@@ -511,6 +537,10 @@ class AttachedDocumentViewSet(viewsets.ModelViewSet):
 class AppointmentViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = AppointmentSerializer
+
+    def list(self, request, *args, **kwargs):
+        _cancel_past_appointments()
+        return super().list(request, *args, **kwargs)
 
     def get_queryset(self):
         user = self.request.user
@@ -799,6 +829,8 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 {"detail": "No autorizado."},
                 status=status.HTTP_403_FORBIDDEN,
             )
+
+        _cancel_past_appointments()
 
         from django.utils.dateparse import parse_date
         start_str = request.query_params.get("start")
