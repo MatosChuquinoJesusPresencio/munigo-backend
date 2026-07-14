@@ -78,7 +78,12 @@ class MeView(generics.RetrieveAPIView):
 
 class EmployeeViewSet(viewsets.ModelViewSet):
     serializer_class = EmployeeSerializer
-    permission_classes = [IsAuthenticated, IsGerente]
+    permission_classes = [IsAuthenticated, IsEmployee]
+
+    def get_permissions(self):
+        if self.action in ("list", "retrieve"):
+            return [IsAuthenticated(), IsEmployee()]
+        return [IsAuthenticated(), IsGerente()]
 
     def get_queryset(self):
         qs = Employee.objects.select_related("citizen__user")
