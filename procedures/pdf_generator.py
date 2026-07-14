@@ -134,9 +134,7 @@ def generate_license_pdf(case_file) -> bytes:
     elements.append(Paragraph("DATOS DEL ESTABLECIMIENTO", section_title_style))
     elements.append(table_empresa)
 
-    approval_date = case_file.updated_at or timezone.now()
-    if hasattr(case_file, '_state') and case_file._state.adding is False:
-        approval_date = timezone.now()
+    approval_date = timezone.now()
 
     vigencia_inicio = approval_date.strftime('%d/%m/%Y')
     vigencia_fin = (approval_date + timedelta(days=365)).strftime('%d/%m/%Y')
