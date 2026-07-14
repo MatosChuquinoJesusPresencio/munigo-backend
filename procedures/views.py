@@ -336,8 +336,11 @@ class CaseFileViewSet(viewsets.ModelViewSet):
 
         appointments = Appointment.objects.filter(
             inspector=employee,
-            case_file__status=CaseFileStatus.PENDING_INSPECTION,
-            status=AppointmentStatus.CONFIRMED,
+            status__in=[
+                AppointmentStatus.PENDING_CONFIRMATION,
+                AppointmentStatus.CONFIRMED,
+                AppointmentStatus.PENDING_RESCHEDULE,
+            ],
         ).select_related('case_file', 'case_file__establishment', 'case_file__establishment__company')
 
         case_file_ids = appointments.values_list('case_file_id', flat=True).distinct()
