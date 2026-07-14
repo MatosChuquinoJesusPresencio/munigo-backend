@@ -227,6 +227,9 @@ class CaseFileViewSet(viewsets.ModelViewSet):
             notes=data.get("notes", ""),
         )
 
+        case_file.status = CaseFileStatus.PENDING_INSPECTION
+        case_file.save(update_fields=["status"])
+
         from notifications.models import Notification
         Notification.objects.create(
             citizen=case_file.citizen,
