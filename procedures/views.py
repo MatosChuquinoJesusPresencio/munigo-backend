@@ -381,12 +381,6 @@ class CaseFileViewSet(viewsets.ModelViewSet):
     def complete_inspection(self, request, pk=None):
         case_file = self.get_object()
 
-        if case_file.status != CaseFileStatus.PENDING_INSPECTION:
-            return Response(
-                {"detail": "Solo se pueden completar inspecciones pendientes."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
         try:
             employee = request.user.citizen.employee
         except AttributeError:
