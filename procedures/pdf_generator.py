@@ -1,5 +1,6 @@
 import io
-from datetime import timedelta
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
@@ -8,7 +9,8 @@ from reportlab.lib.units import cm, mm
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
 
-from django.utils import timezone
+
+LIMA_TZ = ZoneInfo("America/Lima")
 
 
 def generate_license_pdf(case_file) -> bytes:
@@ -134,7 +136,7 @@ def generate_license_pdf(case_file) -> bytes:
     elements.append(Paragraph("DATOS DEL ESTABLECIMIENTO", section_title_style))
     elements.append(table_empresa)
 
-    approval_date = timezone.now()
+    approval_date = datetime.now(LIMA_TZ)
 
     vigencia_inicio = approval_date.strftime('%d/%m/%Y')
     vigencia_fin = (approval_date + timedelta(days=365)).strftime('%d/%m/%Y')
@@ -182,7 +184,7 @@ def generate_license_pdf(case_file) -> bytes:
 
     elements.append(Spacer(1, 10 * mm))
     elements.append(Paragraph(
-        f"Documento generado el {timezone.now().strftime('%d/%m/%Y %H:%M')} - Sistema MuniGO",
+        f"Documento generado el {datetime.now(LIMA_TZ).strftime('%d/%m/%Y %H:%M')} - Sistema MuniGO",
         footer_style,
     ))
 
