@@ -32,8 +32,9 @@ from datetime import date
 
 
 def _cancel_past_appointments():
-    from django.utils import timezone
-    today = timezone.localdate()
+    from zoneinfo import ZoneInfo
+    from datetime import datetime
+    today = datetime.now(ZoneInfo("America/Lima")).date()
     past_active = Appointment.objects.filter(
         scheduled_date__lt=today,
         status__in=[
